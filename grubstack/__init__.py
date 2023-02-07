@@ -57,7 +57,7 @@ app.config['MAIL_USE_TLS']        = os.environ.get('MAIL_USE_TLS') or True
 app.config['MAIL_USERNAME']       = os.environ.get('MAIL_USERNAME') or 'api@grubstack.app'
 app.config['MAIL_PASSWORD']       = os.environ.get('MAIL_PASSWORD') or 'grubstack'
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER') or 'GrubStack API <api@grubstack.app>'
-app.config['MAIL_DEBUG']          = os.environ.get('MAIL_DEBUG') False
+app.config['MAIL_DEBUG']          = os.environ.get('MAIL_DEBUG') or False
 
 # auth0
 app.config['AUTH0_DOMAIN'] = os.environ.get('AUTH0_DOMAIN')
