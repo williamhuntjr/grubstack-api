@@ -1,15 +1,8 @@
 [general]
+urlprefix = /
 debug = yes
-secret = some secret stuff here
+secret = some_secret
 max_upload_size = 268435456
-
-[grubstack]
-server = localhost
-database = grubstack
-port = 5432
-ssl = require
-user = admin
-password = admin
 
 [mail]
 enabled = yes
@@ -19,14 +12,13 @@ ssl = no
 tls = yes
 user = user
 password = password
-from = GrubStack API <api@domain.tld>
+from = GrubStack API <api@api.grubstack.app>
 debug = no
 
 [logging]
 log_to_console = yes
-log_to_file = yes
-log_to_file_name = grubstack.log
-log_to_database = no
+log_to_file = no
+log_to_database = yes
 log_requests = no
 log_min_level = 20
 log_format = [%(asctime)s] [%(name)s] [%(levelname)s] [%(module)s/%(funcName)s/%(lineno)d] %(message)s
@@ -37,3 +29,6 @@ enabled = yes
 headers_enabled = yes
 strategy = fixed-window-elastic-expiry
 default_limit = 300 per minute, 10 per second
+
+[caching]
+config = { "CACHE_TYPE": "simple" }

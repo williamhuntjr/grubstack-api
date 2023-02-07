@@ -1,4 +1,4 @@
-FROM python:3.5
+FROM python:3.10
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
@@ -20,7 +20,9 @@ COPY nginx-backend.conf /etc/nginx/conf.d/
 COPY uwsgi.ini /etc/uwsgi/
 COPY supervisord.conf /etc/
 
-COPY grubstack /opt/grubstack-api
+COPY grubstack/grubstack.ini.sample /opt/grubstack-api/grubstack/grubstack.ini
+COPY main.py /opt/grubstack-api/
+COPY grubstack /opt/grubstack-api/grubstack
 
 WORKDIR /opt/grubstack-api
 

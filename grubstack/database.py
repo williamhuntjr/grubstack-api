@@ -1,4 +1,4 @@
-import logging
+import logging, os
 import psycopg2
 import psycopg2.extras
 from flask import current_app
@@ -8,12 +8,12 @@ logger = logging.getLogger("grubstack")
 class GrubDatabase(object):
   def __init__(self, config, server=None, database=None, port=None, user=None, password=None, ssl=None):
     self.config     = config
-    self.server     = server   or config.get('database',    'server',   fallback='localhost')
-    self.database   = database or config.get('database',    'database', fallback='grubstack')
-    self.port       = port     or config.getint('database', 'port',     fallback=5432)
-    self.user       = user     or config.get('database',    'user',     fallback='admin')
-    self.password   = password or config.get('database',    'password', fallback='admin')
-    self.ssl        = ssl      or config.get('database',    'ssl',      fallback='prefer')
+    self.server     = server   or os.environ.get('DATABASE_HOST')
+    self.database   = database or os.environ.get('DATABASE_NAME')
+    self.port       = port     or os.environ.get('DATABASE_PORT')
+    self.user       = user     or os.environ.get('DATABASE_USER')
+    self.password   = password or os.environ.get('DATABASE_PASSWORD')
+    self.ssl        = ssl      or os.environ.get('DATABASE_SSL')
     self.connection = self.connect()
 
   def connect(self):

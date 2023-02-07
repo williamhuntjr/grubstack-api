@@ -32,10 +32,10 @@ if not tmpfile.exists():
 print('INFO: Loading config from {}'.format(configfile))
 
 config.read(configfile)
-app = Flask(__name__, static_folder='../static')
+app = Flask(__name__)
 
 # Set the customer tenant ID
-app.config['TENANT_ID']         = config.get('general', 'tenant_id')
+app.config['TENANT_ID']         = os.environ.get('TENANT_ID')
 
 # General settings
 app.config['CONFIG_FILE']        = configfile
@@ -50,23 +50,23 @@ app.config['RATELIMIT_STRATEGY']        = config.get('ratelimit', 'strategy')
 app.config['RATELIMIT_HEADERS_ENABLED'] = config.getboolean('ratelimit', 'headers_enabled')
 
 # flask-mail
-app.config['MAIL_ENABLED']        = config.getboolean('mail', 'enabled', fallback=False)
-app.config['MAIL_SERVER']         = config.get('mail', 'server')
-app.config['MAIL_PORT']           = config.getint('mail', 'port')
-app.config['MAIL_USE_TLS']        = config.getboolean('mail', 'tls')
-app.config['MAIL_USERNAME']       = config.get('mail', 'user')
-app.config['MAIL_PASSWORD']       = config.get('mail', 'password')
-app.config['MAIL_DEFAULT_SENDER'] = config.get('mail', 'from')
-app.config['MAIL_DEBUG']          = config.getboolean('mail', 'debug', fallback=False)
+app.config['MAIL_ENABLED']        = os.environ.get('MAIL_EMAILED')
+app.config['MAIL_SERVER']         = os.environ.get('MAIL_SERVER')
+app.config['MAIL_PORT']           = os.environ.get('MAIL_PORT')
+app.config['MAIL_USE_TLS']        = os.environ.get('MAIL_USE_TLS')
+app.config['MAIL_USERNAME']       = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD']       = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
+app.config['MAIL_DEBUG']          = os.environ.get('MAIL_DEBUG')
 
 # auth0
-app.config['AUTH0_DOMAIN'] = config.get('auth0', 'domain', fallback='dev-x2xvjtterdxi3zgj.us.auth0.com')
-app.config['API_AUDIENCE'] = config.get('auth0', 'audience', fallback='https://core-api.grubstack.app/v1')
+app.config['AUTH0_DOMAIN'] = os.environ.get('AUTH0_DOMAIN')
+app.config['API_AUDIENCE'] = os.environ.get('API_AUDIENCE')
 
 # Initialize globals
 mail = Mail(app)
 gsdb = GrubDatabase(config)
-gsprod = GrubDatabase(config, config.get('corporate', 'server', fallback='localhost'), config.get('corporate', 'database', fallback='grubstack'), config.get('corporate', 'port', fallback='5432'), config.get('corporate', 'user', fallback='grubstack'), config.get('corporate', 'password', fallback='grubstack'))
+gsprod = GrubDatabase(config, os.environ.get('DATABASE_HOST'), os.environ.get('CORPORATE_DB'))
 cors = CORS(app, supports_credentials=True)
 
 # Logger
