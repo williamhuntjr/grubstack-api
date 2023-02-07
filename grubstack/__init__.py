@@ -50,14 +50,14 @@ app.config['RATELIMIT_STRATEGY']        = config.get('ratelimit', 'strategy')
 app.config['RATELIMIT_HEADERS_ENABLED'] = config.getboolean('ratelimit', 'headers_enabled')
 
 # flask-mail
-app.config['MAIL_ENABLED']        = os.environ.get('MAIL_EMAILED')
-app.config['MAIL_SERVER']         = os.environ.get('MAIL_SERVER')
-app.config['MAIL_PORT']           = os.environ.get('MAIL_PORT')
-app.config['MAIL_USE_TLS']        = os.environ.get('MAIL_USE_TLS')
-app.config['MAIL_USERNAME']       = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD']       = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
-app.config['MAIL_DEBUG']          = os.environ.get('MAIL_DEBUG')
+app.config['MAIL_ENABLED']        = os.environ.get('MAIL_EMAILED') or True
+app.config['MAIL_SERVER']         = os.environ.get('MAIL_SERVER') or 'mail.grubstack.app'
+app.config['MAIL_PORT']           = os.environ.get('MAIL_PORT') or '587'
+app.config['MAIL_USE_TLS']        = os.environ.get('MAIL_USE_TLS') or True
+app.config['MAIL_USERNAME']       = os.environ.get('MAIL_USERNAME') or 'api@grubstack.app'
+app.config['MAIL_PASSWORD']       = os.environ.get('MAIL_PASSWORD') or 'grubstack'
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER') or 'GrubStack API <api@grubstack.app>'
+app.config['MAIL_DEBUG']          = os.environ.get('MAIL_DEBUG') False
 
 # auth0
 app.config['AUTH0_DOMAIN'] = os.environ.get('AUTH0_DOMAIN')
