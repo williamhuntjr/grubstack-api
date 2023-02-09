@@ -8,6 +8,7 @@ from flask import request, _request_ctx_stack, Blueprint
 
 from . import app, config, logger, gsprod, gsdb
 from grubstack.utilities import gs_make_response
+from grubstack.envelope import GStatusCode
 
 AUTH0_DOMAIN = app.config['AUTH0_DOMAIN']
 API_AUDIENCE = app.config['API_AUDIENCE']
@@ -47,17 +48,39 @@ def get_token_auth_header():
   token = parts[1]
   return token
 
-def get_user_info():
+def get_auth0_user_info():
   token = get_token_auth_header()
   resp = requests.get("https://"+AUTH0_DOMAIN+"/userinfo", headers={'Authorization': 'Bearer '+token})
   json_data = resp.json() 
   return json_data
 
-def get_user_id():
+def get_auth0_user_id():
   token = get_token_auth_header()
   resp = requests.get("https://"+AUTH0_DOMAIN+"/userinfo", headers={'Authorization': 'Bearer '+token})
   json_data = resp.json() 
   return json_data['sub'] if 'sub' in json_data else None
+
+def get_user_id():
+  userId = request.headers.get("Grub-User-Id", None)
+  if userId:
+    return userId
+  else:
+    user = get_user_info()
+    if user.sub:
+      return user.sub
+    else:
+      return None
+
+def get_user_email():
+  user = request.headers.get("Grub-User", None)
+  if user:
+    return user
+  else:
+    user = get_user_info()
+    if user.email:
+      return user.email
+    else:
+      return ''
 
 def requires_auth(f):
   @wraps(f)
@@ -111,7 +134,7 @@ def requires_scope(required_scope):
     def scope_required(*args, **kwargs):
       token = get_token_auth_header()
       unverified_claims = jwt.get_unverified_claims(token)
-      user = get_user_info()
+      user = get_user_email()
       if config.getboolean('logging', 'log_requests'):
         logger.info(f"[user:{'Anonymous'}] [client:{request.remote_addr}] [request:{request}]")
       if unverified_claims.get("scope"):
@@ -120,7 +143,7 @@ def requires_scope(required_scope):
           if token_scope == required_scope:
             return func(*args, **kwargs)
         body = request.get_data().decode('utf-8')
-        logger.error(f'[http:403] [user:{user.email}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
+        logger.error(f'[http:403] [user:{user}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
       raise AuthError({
           "code": "Unauthorized",
           "description": "You don't have access to this resource"
@@ -132,20 +155,21 @@ def requires_permission(*expected_args):
   def decorator(func):
     @wraps(func)
     def permissionsrequired(*args, **kwargs):
-      user = get_user_info()
-      user_id = user['sub'] if 'sub' in user else None
-      permissions = []  
-      row = gsdb.fetchall("SELECT f.permission_id, name FROM gs_user_permission f LEFT JOIN gs_permission i USING (permission_id) WHERE f.user_id = %s ORDER BY name ASC", (user_id,))
-      if row != None:
-        for permission in row:
-          permissions.append(permission['name'])
-      if config.getboolean('logging', 'log_requests'):
-        logger.info(f"[user:{user.email if user is not None else 'Anonymous'}] [client:{request.remote_addr}] [request:{request}]")
-      for expected_arg in expected_args:
-        if expected_arg in permissions:
-          return func(*args, **kwargs)
+      user = get_user_email()
+      user_id = get_user_id()
+      if user_id != None:
+        permissions = []  
+        row = gsdb.fetchall("SELECT f.permission_id, name FROM gs_user_permission f LEFT JOIN gs_permission i USING (permission_id) WHERE f.user_id = %s ORDER BY name ASC", (user_id,))
+        if row != None:
+          for permission in row:
+            permissions.append(permission['name'])
+        if config.getboolean('logging', 'log_requests'):
+          logger.info(f"[user:{user if user is not None else 'Anonymous'}] [client:{request.remote_addr}] [request:{request}]")
+        for expected_arg in expected_args:
+          if expected_arg in permissions:
+            return func(*args, **kwargs)
       body = request.get_data().decode('utf-8')
-      logger.error(f'[http:403] [user:{user.email}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
+      logger.error(f'[http:403] [user:{user}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
       return gs_make_response(message='Forbidden',
                               status=GStatusCode.ERROR,
                               httpstatus=403)
@@ -156,20 +180,21 @@ def requires_role(*expected_args):
   def decorator(func):
     @wraps(func)
     def rolesrequired(*args, **kwargs):
-      user = get_user_info()
-      user_id = user['sub'] if 'sub' in user else None
-      roles = []  
-      row = gsdb.fetchall("SELECT f.role_id, name FROM gs_user_role f LEFT JOIN gs_role i USING (role_id) WHERE f.user_id = %s ORDER BY name ASC", (user_id,))
-      if row != None:
-        for role in row:
-          roles.append(role['name'])
-      if config.getboolean('logging', 'log_requests'):
-        logger.info(f"[user:{user.email if user is not None else 'Anonymous'}] [client:{request.remote_addr}] [request:{request}]")
-      for expected_arg in expected_args:
-        if expected_arg in roles:
-          return func(*args, **kwargs)
+      user = get_user_email()
+      user_id = get_user_id()
+      if user_id != None:
+        roles = []  
+        row = gsdb.fetchall("SELECT f.role_id, name FROM gs_user_role f LEFT JOIN gs_role i USING (role_id) WHERE f.user_id = %s ORDER BY name ASC", (user_id,))
+        if row != None:
+          for role in row:
+            roles.append(role['name'])
+        if config.getboolean('logging', 'log_requests'):
+          logger.info(f"[user:{user if user is not None else 'Anonymous'}] [client:{request.remote_addr}] [request:{request}]")
+        for expected_arg in expected_args:
+          if expected_arg in roles:
+            return func(*args, **kwargs)
       body = request.get_data().decode('utf-8')
-      logger.error(f'[http:403] [user:{user.email}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
+      logger.error(f'[http:403] [user:{user}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
       return gs_make_response(message='Forbidden',
                               status=GStatusCode.ERROR,
                               httpstatus=403)
