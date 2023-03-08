@@ -165,6 +165,9 @@ def requires_permission(*expected_args):
             permissions.append(permission['name'])
         if config.getboolean('logging', 'log_requests'):
           logger.info(f"[user:{user if user is not None else 'Anonymous'}] [client:{request.remote_addr}] [request:{request}]")
+        is_owner = gsprod.fetchone("SELECT is_owner FROM gs_user_tenant WHERE tenant_id = %s AND user_id = %s", (app.config['TENANT_ID'], user_id,))
+        if is_owner != None:
+          return func(*args, **kwargs)
         for expected_arg in expected_args:
           if expected_arg in permissions:
             return func(*args, **kwargs)
@@ -245,6 +248,13 @@ def get_userinfo():
     if row != None:
       for permission in row:
         permissions.append(permission['name'])
+
+    is_owner = gsprod.fetchone("SELECT is_owner FROM gs_user_tenant WHERE tenant_id = %s AND user_id = %s", (app.config['TENANT_ID'], json_data['sub'],))
+    if is_owner:
+      row = gsdb.fetchall("SELECT name FROM gs_permission")
+      if row != None:
+        for permission in row:
+          permissions.append(permission['name'])
 
     json_data['permissions'] = permissions
     return gs_make_response(data=json_data)
