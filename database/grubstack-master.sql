@@ -222,8 +222,19 @@ CREATE TABLE public.gs_item_ingredient (
     is_extra boolean
 );
 
-
 ALTER TABLE public.gs_item_ingredient OWNER TO grubstack;
+
+--
+-- Name: gs_item_variety; Type: TABLE; Schema: public; Owner: grubstack
+--
+
+CREATE TABLE public.gs_item_variety (
+    tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
+    item_id integer NOT NULL,
+    variety_id integer NOT NULL,
+);
+
+ALTER TABLE public.gs_item_variety OWNER TO grubstack;
 
 --
 -- Name: gs_variety; Type: TABLE; Schema: public; Owner: grubstack
@@ -263,6 +274,7 @@ ALTER TABLE gs_menu ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_menu_item ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_item ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_item_ingredient ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_item_variety ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety_ingredient ENABLE ROW LEVEL SECURITY;
 
@@ -276,6 +288,7 @@ ALTER TABLE gs_menu FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_menu_item FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_item FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_item_ingredient FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_item_variety FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety_ingredient FORCE ROW LEVEL SECURITY;
 
@@ -289,6 +302,7 @@ CREATE POLICY tenant_isolation_policy ON gs_menu USING (tenant_id = current_sett
 CREATE POLICY tenant_isolation_policy ON gs_menu_item USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_item USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_item_ingredient USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_item_variety USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_variety USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_variety_ingredient USING (tenant_id = current_setting('app.tenant_id')::UUID);
 

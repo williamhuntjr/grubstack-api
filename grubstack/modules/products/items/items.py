@@ -30,11 +30,25 @@ def get_all():
 
     items_list = []
     for item in items:
+      varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url
+                          FROM gs_variety c INNER JOIN gs_item_variety p ON p.variety_id = c.variety_id 
+                          WHERE p.item_id = %s ORDER BY name ASC""", (item['item_id'],))
+
+      varieties_list = []
+      for variety in varieties:
+        varieties_list.append({
+          "id": variety['variety_id'],
+          "name": variety['name'],
+          "description": variety['description'],
+          "thumbnail_url": variety['thumbnail_url'],
+        })
+
       items_list.append({
         "id": item['item_id'],
         "name": item['name'],
         "description": item['description'],
         "thumbnail_url": item['thumbnail_url'],
+        "varieties": varieties_list
       })
 
     # Calculate paged data
@@ -383,6 +397,104 @@ def delete_ingredient():
         else:
           qry = gsdb.execute("DELETE FROM gs_item_ingredient WHERE item_id = %s AND ingredient_id = %s", (item_id, ingredient_id,))
           return gs_make_response(message=f'Ingredient #{ingredient_id} deleted from item')
+          
+      else:
+        return gs_make_response(message='Invalid data',
+                                status=GStatusCode.ERROR,
+                                httpstatus=400)
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Error processing request',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
+@item.route('/item/<int:itemId>/varieties', methods=['GET'])
+@requires_auth
+@requires_permission("ViewItems")
+def get_all_varieties(itemId):
+  try:
+    json_data = []
+    varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url
+                                    FROM gs_variety c INNER JOIN gs_item_variety p ON p.variety_id = c.variety_id 
+                                    WHERE p.item_id = %s ORDER BY name ASC""", (itemId,))
+
+    for variety in varieties:
+      json_data.append({
+        "id": variety['variety_id'],
+        "name": variety['name'],
+        "description": variety['description'],
+        "thumbnail_url": variety['thumbnail_url'],
+      })
+
+    return gs_make_response(data=json_data)
+
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Unable to retrieve varieties. Please try again',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
+@item.route('/item/addVariety', methods=['POST'])
+@requires_auth
+@requires_permission("MaintainItems")
+def add_variety():
+  try:
+    json_data = {}
+    if request.json:
+      data = json.loads(request.data)
+      params = data['params']
+      item_id = params['item_id']
+      variety_id = params['variety_id']
+
+      if item_id and variety_id:
+        # Check if exists
+        item = gsdb.fetchone("SELECT * FROM gs_item WHERE item_id = %s", (item_id,))
+        variety = gsdb.fetchone("SELECT * FROM gs_variety WHERE variety_id = %s", (variety_id,))
+        is_existing = gsdb.fetchone("SELECT * FROM gs_item_variety WHERE item_id = %s AND variety_id = %s", (item_id, variety_id,))
+        if item is None or variety is None:
+          return gs_make_response(message='Invalid item or invalid variety',
+                                  status=GStatusCode.ERROR,
+                                  httpstatus=400)
+        else:
+          if not is_existing:
+            qry = gsdb.execute("INSERT INTO gs_item_variety VALUES (%s, %s, %s)", (app.config["TENANT_ID"], item_id, variety_id,))
+            return gs_make_response(message=f'Variety #{variety_id} added to item')
+          else:
+            return gs_make_response(message=f'Variety already exists on item',
+                                    status=GStatusCode.ERROR,
+                                    httpstatus=400)
+      else:
+        return gs_make_response(message='Invalid data',
+                                status=GStatusCode.ERROR,
+                                httpstatus=400)
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Error processing request',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
+@item.route('/item/deleteVariety', methods=['POST'])
+@requires_auth
+@requires_permission("MaintainItems")
+def delete_variety():
+  try:
+    json_data = {}
+    if request.json:
+      data = json.loads(request.data)
+      params = data['params']
+      item_id = params['item_id']
+      variety_id = params['variety_id']
+
+      if item_id and variety_id:
+        # Check if exists
+        item_variety = gsdb.fetchone("SELECT * FROM gs_item_variety WHERE item_id = %s AND variety_id = %s", (item_id, variety_id,))
+        if item_variety is None:
+          return gs_make_response(message='Invalid item variety',
+                                  status=GStatusCode.ERROR,
+                                  httpstatus=400)
+        else:
+          qry = gsdb.execute("DELETE FROM gs_item_variety WHERE item_id = %s AND variety_id = %s", (item_id, variety_id,))
+          return gs_make_response(message=f'Variety #{variety_id} deleted from item')
           
       else:
         return gs_make_response(message='Invalid data',
