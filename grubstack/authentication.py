@@ -11,7 +11,7 @@ from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 
 AUTH0_DOMAIN = app.config['AUTH0_DOMAIN']
-API_AUDIENCE = app.config['API_AUDIENCE']
+AUTH0_AUDIENCE = app.config['AUTH0_AUDIENCE']
 
 ALGORITHMS = ["RS256"]
 
@@ -105,7 +105,7 @@ def requires_auth(f):
           token,
           rsa_key,
           algorithms=ALGORITHMS,
-          audience=API_AUDIENCE,
+          audience=AUTH0_AUDIENCE,
           issuer="https://"+AUTH0_DOMAIN+"/"
         )
       except jwt.ExpiredSignatureError:
@@ -227,7 +227,7 @@ def get_userinfo():
           token,
           rsa_key,
           algorithms=ALGORITHMS,
-          audience=API_AUDIENCE,
+          audience=AUTH0_AUDIENCE,
           issuer="https://"+AUTH0_DOMAIN+"/"
       )
     except jwt.ExpiredSignatureError:
@@ -257,6 +257,7 @@ def get_userinfo():
           permissions.append(permission['name'])
 
     json_data['permissions'] = permissions
+    json_data['tenant_id'] = app.config['TENANT_ID']
     return gs_make_response(data=json_data)
   raise AuthError({"code": "invalid_header",
         "description": "Unable to find appropriate key"}, 401)
@@ -284,7 +285,7 @@ def verify_tenant():
           token,
           rsa_key,
           algorithms=ALGORITHMS,
-          audience=API_AUDIENCE,
+          audience=AUTH0_AUDIENCE,
           issuer="https://"+AUTH0_DOMAIN+"/"
       )
     except jwt.ExpiredSignatureError:

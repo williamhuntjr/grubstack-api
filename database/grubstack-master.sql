@@ -231,7 +231,7 @@ ALTER TABLE public.gs_item_ingredient OWNER TO grubstack;
 CREATE TABLE public.gs_item_variety (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
     item_id integer NOT NULL,
-    variety_id integer NOT NULL,
+    variety_id integer NOT NULL
 );
 
 ALTER TABLE public.gs_item_variety OWNER TO grubstack;
@@ -264,7 +264,6 @@ CREATE TABLE public.gs_variety_ingredient (
 ALTER TABLE public.gs_variety_ingredient OWNER TO grubstack;
 
 
-ALTER TABLE gs_tenant ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_permission ENABLE ROW LEVEL SECURITY;
@@ -278,7 +277,6 @@ ALTER TABLE gs_item_variety ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety_ingredient ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE gs_tenant FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_permission FORCE ROW LEVEL SECURITY;
@@ -292,7 +290,6 @@ ALTER TABLE gs_item_variety FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety_ingredient FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY tenant_isolation_policy ON gs_tenant USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_user USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_user_role USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_user_permission USING (tenant_id = current_setting('app.tenant_id')::UUID);
