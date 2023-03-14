@@ -119,9 +119,8 @@ def requires_auth(f):
                           "description":"Unable to parse authentication token."}, 401)
 
       _request_ctx_stack.top.current_user = payload
-      print(payload)
       row = gsprod.fetchall("SELECT * FROM gs_user_tenant WHERE user_id = %s AND tenant_id = %s", (payload['sub'], app.config['TENANT_ID'],))
-      print(payload['sub'], app.config['TENANT_ID'])
+
       if len(row) <= 0:
           raise AuthError({"code": "invalid_tenant",
                           "description":"You do not have access to this tenant."}, 403)
