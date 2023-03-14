@@ -30,21 +30,17 @@ def get_versions():
 @requires_auth
 def update_apps():
   try:
-    api_id = gsprod.fetchone("SELECT * FROM gs_product WHERE product_name = 'GrubStack API'")
-    products = gsprod.fetchall("SELECT * FROM gs_product WHERE product_name != 'GrubStack API'")
+    products = gsprod.fetchall("SELECT app_id, app_url, c.tenant_id, c.product_id, p.is_front_end_app, p.product_name, p.product_description FROM gs_tenant_app c INNER JOIN gs_product p on p.product_id = c.product_id WHERE c.tenant_id = %s", (app.config['TENANT_ID'],))
 
     for product in products:
-      url = 'https://api.grubstack.app/v1/product/app/restart'
-      print("URL", url)
-      data = {"params": {"app_id": product['product_id']}}
-      headers = {
-        'Authorization': 'Bearer ' + get_token_auth_header(),
-        'Content-Type': 'application/json'
-      }
-      print(headers)
-      resp = requests.post(url, json=data, headers=headers)
-      print(resp)
-      print("Rebooted!!!")
+      if product['product_name'] != 'GrubStack API':
+        url = 'https://api.grubstack.app/v1/product/app/restart'
+        data = {"params": {"app_id": product['app_id']}}
+        headers = {
+          'Authorization': 'Bearer ' + get_token_auth_header(),
+          'Content-Type': 'application/json'
+        }
+        resp = requests.post(url, json=data, headers=headers)
 
     return gs_make_response(message='Apps updated successfully')
 

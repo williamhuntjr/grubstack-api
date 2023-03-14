@@ -37,8 +37,10 @@ print('INFO: Loading config from {}'.format(configfile))
 config.read(configfile)
 app = Flask(__name__)
 
-# Set the customer tenant ID
-app.config['TENANT_ID']         = os.environ.get('TENANT_ID')
+if config.get('general', 'tenant_id', fallback='') != '':
+  app.config['TENANT_ID']         = config.get('general', 'tenant_id', fallback='')
+else:
+  app.config['TENANT_ID']         = os.environ.get('TENANT_ID')
 
 # General settings
 app.config['CONFIG_FILE']        = configfile
