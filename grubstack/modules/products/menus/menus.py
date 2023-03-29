@@ -4,7 +4,7 @@ from flask import Blueprint, url_for, request
 from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import AuthError, requires_auth, requires_permission, get_user_id
+from grubstack.authentication import AuthError, requires_auth, requires_permission
 
 menu = Blueprint('menu', __name__)
 logger = logging.getLogger('grubstack')

@@ -42,6 +42,11 @@ if config.get('general', 'tenant_id', fallback='') != '':
 else:
   app.config['TENANT_ID']         = os.environ.get('TENANT_ID')
 
+if config.get('general', 'api_token', fallback='') != '':
+  app.config['API_TOKEN']         = config.get('general', 'api_token', fallback='')
+else:
+  app.config['API_TOKEN']         = os.environ.get('API_TOKEN')
+
 # General settings
 app.config['CONFIG_FILE']        = configfile
 app.config['VERSION']            = __version__

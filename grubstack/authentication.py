@@ -60,28 +60,30 @@ def get_auth0_user_id():
   json_data = resp.json() 
   return json_data['sub'] if 'sub' in json_data else None
 
+def get_user_info():
+    token = get_token_auth_header()
+    resp = requests.get("https://"+AUTH0_DOMAIN+"/userinfo", headers={'Authorization': 'Bearer '+token})
+    json_data = resp.json()
+    print(json_data)
+    return json_data
+
 def get_user_id():
-  userId = request.headers.get("Grub-User-Id", None)
-  if userId:
-    return userId
-  else:
-    user = get_user_info()
-    if user.sub:
-      return user.sub
-    else:
-      return None
+    token = get_token_auth_header()
+    resp = requests.get("https://"+AUTH0_DOMAIN+"/userinfo", headers={'Authorization': 'Bearer '+token})
+    json_data = resp.json() 
+    return json_data['sub'] if 'sub' in json_data else None
 
-def get_user_email():
-  user = request.headers.get("Grub-User", None)
-  if user:
-    return user
-  else:
-    user = get_user_info()
-    if user.email:
-      return user.email
-    else:
-      return ''
+def requires_token(f):
+  @wraps(f)
+  def decorated(*args, **kwargs):
+    token = request.headers.get("Grub-Token", None)
 
+    if token != None and 'ACCESS_TOKEN' in app.config and app.config['ACCESS_TOKEN'] == token:
+      return f(*args, **kwargs)
+    raise AuthError({"code": "invalid_token",
+                    "description": "Unable to find appropriate token"}, 401)
+  return decorated
+  
 def requires_auth(f):
   @wraps(f)
   def decorated(*args, **kwargs):
@@ -135,7 +137,7 @@ def requires_scope(required_scope):
     def scope_required(*args, **kwargs):
       token = get_token_auth_header()
       unverified_claims = jwt.get_unverified_claims(token)
-      user = get_user_email()
+      user_id = get_user_id()
       if config.getboolean('logging', 'log_requests'):
         logger.info(f"[user:{'Anonymous'}] [client:{request.remote_addr}] [request:{request}]")
       if unverified_claims.get("scope"):
@@ -144,7 +146,7 @@ def requires_scope(required_scope):
           if token_scope == required_scope:
             return func(*args, **kwargs)
         body = request.get_data().decode('utf-8')
-        logger.error(f'[http:403] [user:{user}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
+        logger.error(f'[http:403] [user:{user_id}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
       raise AuthError({
           "code": "Unauthorized",
           "description": "You don't have access to this resource"
@@ -156,7 +158,6 @@ def requires_permission(*expected_args):
   def decorator(func):
     @wraps(func)
     def permissionsrequired(*args, **kwargs):
-      user = get_user_email()
       user_id = get_user_id()
       if user_id != None:
         permissions = []  
@@ -173,7 +174,7 @@ def requires_permission(*expected_args):
           if expected_arg in permissions:
             return func(*args, **kwargs)
       body = request.get_data().decode('utf-8')
-      logger.error(f'[http:403] [user:{user}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
+      logger.error(f'[http:403] [user:{user_id}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
       return gs_make_response(message='Forbidden',
                               status=GStatusCode.ERROR,
                               httpstatus=403)
@@ -184,7 +185,6 @@ def requires_role(*expected_args):
   def decorator(func):
     @wraps(func)
     def rolesrequired(*args, **kwargs):
-      user = get_user_email()
       user_id = get_user_id()
       if user_id != None:
         roles = []  
@@ -198,7 +198,7 @@ def requires_role(*expected_args):
           if expected_arg in roles:
             return func(*args, **kwargs)
       body = request.get_data().decode('utf-8')
-      logger.error(f'[http:403] [user:{user}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
+      logger.error(f'[http:403] [user:{user_id}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
       return gs_make_response(message='Forbidden',
                               status=GStatusCode.ERROR,
                               httpstatus=403)

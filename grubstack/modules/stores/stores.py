@@ -4,7 +4,7 @@ from flask import Blueprint, url_for, request
 from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import requires_auth, requires_permission, get_user_id
+from grubstack.authentication import requires_auth, requires_permission
 
 store = Blueprint('store', __name__)
 logger = logging.getLogger('grubstack')
@@ -91,7 +91,7 @@ def create():
 
       if name and address1 and city and state and postal and store_type and thumbnail_url:
         # Check if exists
-        row = gsdb.fetchall("SELECT * FROM gs_store WHERE name = %s AND store_type = %s ORDER BY name ASC", (get_user_id(), name, store_type,))
+        row = gsdb.fetchall("SELECT * FROM gs_store WHERE name = %s AND store_type = %s ORDER BY name ASC", (name, store_type,))
 
         if row is not None and len(row) > 0:
           return gs_make_response(message='That store and store type combination already exists. Try a different name',
