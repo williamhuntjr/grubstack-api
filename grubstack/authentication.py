@@ -48,30 +48,13 @@ def get_token_auth_header():
   token = parts[1]
   return token
 
-def get_auth0_user_info():
-  token = get_token_auth_header()
-  resp = requests.get("https://"+AUTH0_DOMAIN+"/userinfo", headers={'Authorization': 'Bearer '+token})
-  json_data = resp.json() 
-  return json_data
-
-def get_auth0_user_id():
-  token = get_token_auth_header()
-  resp = requests.get("https://"+AUTH0_DOMAIN+"/userinfo", headers={'Authorization': 'Bearer '+token})
-  json_data = resp.json() 
-  return json_data['sub'] if 'sub' in json_data else None
-
 def get_user_info():
-    token = get_token_auth_header()
-    resp = requests.get("https://"+AUTH0_DOMAIN+"/userinfo", headers={'Authorization': 'Bearer '+token})
-    json_data = resp.json()
-    print(json_data)
-    return json_data
+  current_user = _request_ctx_stack.top.current_user
+  return current_user
 
 def get_user_id():
-    token = get_token_auth_header()
-    resp = requests.get("https://"+AUTH0_DOMAIN+"/userinfo", headers={'Authorization': 'Bearer '+token})
-    json_data = resp.json() 
-    return json_data['sub'] if 'sub' in json_data else None
+  current_user = _request_ctx_stack.top.current_user
+  return current_user['sub'] if 'sub' in current_user else None
 
 def requires_token(f):
   @wraps(f)
