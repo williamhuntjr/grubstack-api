@@ -2,7 +2,7 @@ FROM python:3.10
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
-        libatlas-base-dev gfortran nginx supervisor nfs-common
+        libatlas-base-dev gfortran nginx supervisor nfs-common nfs-utils
 
 RUN pip3 install uwsgi
 
