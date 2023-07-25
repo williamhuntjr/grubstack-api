@@ -24,9 +24,6 @@ COPY grubstack/grubstack.ini.sample /opt/grubstack-api/grubstack/grubstack.ini
 COPY main.py /opt/grubstack-api/
 COPY grubstack /opt/grubstack-api/grubstack
 
-RUN systemctl start rpcbind
-RUN systemctl restart nfs-common
-
 WORKDIR /opt/grubstack-api
 
 CMD ["/usr/bin/supervisord"]
