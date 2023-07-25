@@ -1,18 +1,10 @@
---
--- Name: gs_tenant; Type: TABLE; Schema: public; Owner: grubstack
---
-
 CREATE TABLE public.gs_tenant (
     tenant_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name VARCHAR(255) UNIQUE,
     status VARCHAR(64) CHECK (status IN ('active', 'suspended'))
 );
-
 ALTER TABLE public.gs_tenant OWNER TO grubstack;
 
---
--- Name: gs_user; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_user (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
@@ -28,12 +20,8 @@ CREATE TABLE public.gs_user (
     last_name character varying(120),
     is_subscribed boolean
 );
-
 ALTER TABLE public.gs_user OWNER TO grubstack;
 
---
--- Name: gs_jwt; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_jwt (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
@@ -47,12 +35,8 @@ CREATE TABLE public.gs_jwt (
     jwt_revoked boolean DEFAULT false,
     jwt_created timestamp with time zone DEFAULT now()
 );
-
 ALTER TABLE public.gs_jwt OWNER TO grubstack;
 
---
--- Name: gs_log; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_log (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
@@ -72,60 +56,40 @@ CREATE TABLE public.gs_log (
     log_thread text,
     log_threadname text
 );
-
 ALTER TABLE public.gs_log OWNER TO grubstack;
 
---
--- Name: gs_permission; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_permission (
     permission_id SERIAL PRIMARY KEY NOT NULL,
     name character varying(255),
     description text
 );
-
 ALTER TABLE public.gs_permission OWNER TO grubstack;
 
---
--- Name: gs_user_permission; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_user_permission (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
     user_id integer NOT NULL,
     permission_id integer NOT NULL
 );
-
 ALTER TABLE public.gs_user_permission OWNER TO grubstack;
 
---
--- Name: gs_role; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_role (
     role_id SERIAL PRIMARY KEY NOT NULL,
     name text,
     descripion text
 );
-
 ALTER TABLE public.gs_role OWNER TO grubstack;
 
---
--- Name: gs_user_role; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_user_role (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
     user_id integer NOT NULL,
     role_id integer NOT NULL
 );
-
 ALTER TABLE public.gs_user_role OWNER TO grubstack;
-
---                                                                                                                             
--- Name: gs_store; Type: TABLE; Schema: public; Owner: grubstack                                                               
---                                                                                                                             
+                                                                                                                        
                                                                                                                                
 CREATE TABLE public.gs_store ( 
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
@@ -138,12 +102,8 @@ CREATE TABLE public.gs_store (
     store_type text,                                                                                                           
     thumbnail_url text                                                                                                         
 );                                                                                                                             
-
 ALTER TABLE public.gs_store OWNER TO grubstack;                                                                                
 
---
--- Name: gs_ingredient; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_ingredient (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
@@ -163,12 +123,8 @@ CREATE TABLE public.gs_ingredient (
     fiber double precision,
     price double precision
 );
-
 ALTER TABLE public.gs_ingredient OWNER TO grubstack;
 
---
--- Name: gs_menu; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_menu (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
@@ -177,12 +133,8 @@ CREATE TABLE public.gs_menu (
     description text,
     thumbnail_url text
 );
-
 ALTER TABLE public.gs_menu OWNER TO grubstack;
 
---
--- Name: gs_menu_item; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_menu_item (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
@@ -192,12 +144,8 @@ CREATE TABLE public.gs_menu_item (
     sale_price double precision,
     is_onsale boolean
 );
-
 ALTER TABLE public.gs_menu_item OWNER TO grubstack;
 
---
--- Name: gs_item; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_item (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
@@ -206,12 +154,8 @@ CREATE TABLE public.gs_item (
     description text NOT NULL,
     thumbnail_url text NOT NULL
 );
-
 ALTER TABLE public.gs_item OWNER TO grubstack;
 
---
--- Name: gs_item_ingredient; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_item_ingredient (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
@@ -221,24 +165,16 @@ CREATE TABLE public.gs_item_ingredient (
     is_addon boolean,
     is_extra boolean
 );
-
 ALTER TABLE public.gs_item_ingredient OWNER TO grubstack;
 
---
--- Name: gs_item_variety; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_item_variety (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
     item_id integer NOT NULL,
     variety_id integer NOT NULL
 );
-
 ALTER TABLE public.gs_item_variety OWNER TO grubstack;
 
---
--- Name: gs_variety; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_variety (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
@@ -247,22 +183,47 @@ CREATE TABLE public.gs_variety (
     description text NOT NULL,
     thumbnail_url text NOT NULL
 );
-
 ALTER TABLE public.gs_variety OWNER TO grubstack;
 
---
--- Name: gs_variety_ingredient; Type: TABLE; Schema: public; Owner: grubstack
---
 
 CREATE TABLE public.gs_variety_ingredient (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
     variety_id integer NOT NULL,
     ingredient_id integer NOT NULL
 );
-
-
 ALTER TABLE public.gs_variety_ingredient OWNER TO grubstack;
 
+
+CREATE TABLE public.gs_media_library (
+    tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
+    file_id SERIAL PRIMARY KEY NOT NULL, 
+    file_name TEXT NOT NULL, 
+    file_size INT NOT NULL, 
+    file_type TEXT NOT NULL
+);
+ALTER TABLE public.gs_media_library OWNER TO grubstack;
+
+
+CREATE TABLE public.gs_employee (
+    tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
+    employee_id SERIAL PRIMARY KEY NOT NULL,                                                                                             
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    address1 TEXT NOT NULL,
+    city TEXT NOT NULL,
+    region TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT NOT NULL,
+    profile_image_url TEXT NOT NULL
+);
+ALTER TABLE public.gs_employee OWNER TO grubstack;
+
+CREATE TABLE public.gs_store_employee (
+    tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
+    store_id integer NOT NULL,
+    employee_id integer NOT NULL
+);
+ALTER TABLE public.gs_store_employee OWNER TO grubstack;
 
 ALTER TABLE gs_user ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role ENABLE ROW LEVEL SECURITY;
@@ -276,6 +237,9 @@ ALTER TABLE gs_item_ingredient ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_item_variety ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety_ingredient ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_media_library ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_employee ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_store_employee ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE gs_user FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role FORCE ROW LEVEL SECURITY;
@@ -289,6 +253,9 @@ ALTER TABLE gs_item_ingredient FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_item_variety FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety_ingredient FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_media_library FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_employee FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_store_employee FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_policy ON gs_user USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_user_role USING (tenant_id = current_setting('app.tenant_id')::UUID);
@@ -302,6 +269,9 @@ CREATE POLICY tenant_isolation_policy ON gs_item_ingredient USING (tenant_id = c
 CREATE POLICY tenant_isolation_policy ON gs_item_variety USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_variety USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_variety_ingredient USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_media_library USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_employee USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_store_employee USING (tenant_id = current_setting('app.tenant_id')::UUID);
 
 INSERT INTO gs_permission VALUES (DEFAULT, 'ViewStores', 'Allow user to view stores');
 INSERT INTO gs_permission VALUES (DEFAULT, 'MaintainStores', 'Allow user to to add, delete, and update stores');
@@ -313,6 +283,10 @@ INSERT INTO gs_permission VALUES (DEFAULT, 'ViewIngredients', 'Allow user to vie
 INSERT INTO gs_permission VALUES (DEFAULT, 'MaintainIngredients', 'Allow user to to add, delete, and update ingredients');
 INSERT INTO gs_permission VALUES (DEFAULT, 'ViewVarieties', 'Allow user to view varieties');
 INSERT INTO gs_permission VALUES (DEFAULT, 'MaintainVarieties', 'Allow user to to add, delete, and update varieties');
+INSERT INTO gs_permission VALUES (DEFAULT, 'ViewMediaLibrary', 'Allow user to view media library files');
+INSERT INTO gs_permission VALUES (DEFAULT, 'MaintainMediaLibrary', 'Allow user to to add, delete, and update media library files');
+INSERT INTO gs_permission VALUES (DEFAULT, 'ViewEmployees', 'Allow user to view employees');
+INSERT INTO gs_permission VALUES (DEFAULT, 'MaintainEmployees', 'Allow user to to add, delete, and update employees');
 
 INSERT INTO gs_role VALUES (DEFAULT, 'Administrator', 'Provides administrator access to the dashboard');
 INSERT INTO gs_role VALUES (DEFAULT, 'Customer', 'Basic user account used for store access and purchases');

@@ -11,13 +11,14 @@ class GStatusCode(Enum):
     return self.value
 
 class GStatus(dict):
-  def __init__(self, code=GStatusCode.SUCCESS, message=str(), totalrowcount=0 or None, totalpages=0 or None):
+  def __init__(self, code=GStatusCode.SUCCESS, message=str(), totalrowcount=0, totalpages=0):
     dict.__init__(self)
     self['code'] = code
-    self['message'] = message
-    if totalrowcount != None: 
+    if message != '':
+      self['message'] = message
+    if totalrowcount != 0: 
       self['totalrowcount'] = totalrowcount
-    if totalpages != None: 
+    if totalpages != 0: 
       self['totalpages'] = totalpages
 
 class GRequest(dict):
@@ -45,11 +46,11 @@ class GRequest(dict):
     )
 
 class GResponse(dict):
-  def __init__(self, data=str(), message=str(), status=GStatusCode.SUCCESS, totalrowcount=None, totalpages=None, hasMore=None):
+  def __init__(self, data=str(), message=str(), status=GStatusCode.SUCCESS, totalrowcount=0, totalpages=0, hasMore=False):
     dict.__init__(self)
     self['data'] = data
-    if hasMore is not None: self['hasMore'] = hasMore
-    if totalrowcount is not None and totalpages is not None: self['status'] = GStatus(status, message, totalrowcount, totalpages)
+    if hasMore is not False: self['hasMore'] = True
+    if totalrowcount > 0 and totalpages > 0: self['status'] = GStatus(status, message, totalrowcount, totalpages)
     else: self['status'] = GStatus(status, message)
 
   def __str__(self):

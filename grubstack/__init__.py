@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 import logging, configparser, os, sys, argparse
 from dotenv import load_dotenv
 from flask import Flask
