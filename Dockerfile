@@ -2,7 +2,7 @@ FROM python:3.10
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
-        libatlas-base-dev gfortran nginx supervisor nfs-common nfs-utils
+        libatlas-base-dev gfortran nginx supervisor nfs-common
 
 RUN pip3 install uwsgi
 
@@ -23,6 +23,9 @@ COPY supervisord.conf /etc/
 COPY grubstack/grubstack.ini.sample /opt/grubstack-api/grubstack/grubstack.ini
 COPY main.py /opt/grubstack-api/
 COPY grubstack /opt/grubstack-api/grubstack
+
+RUN systemctl start rpcbind
+RUN systemctl restart nfs-common
 
 WORKDIR /opt/grubstack-api
 
