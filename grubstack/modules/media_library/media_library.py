@@ -1,4 +1,4 @@
-import logging, os, subprocess
+import logging, os, subprocess, json
 from datetime import datetime
 from math import ceil
 from flask import Blueprint, request
@@ -66,8 +66,6 @@ def get_all():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-  return gs_make_response(data=[])
-
 @media_library.route('/media-library/upload', methods=['POST'])
 @requires_auth
 @requires_permission('MaintainMediaLibrary')
@@ -107,11 +105,45 @@ def upload_file():
       return gs_make_response(message='File uploaded successfully',
                       status=GStatusCode.SUCCESS,
                       httpstatus=200)
-    
+  
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Unable to upload file',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
-                            
+
+@media_library.route('/media-library/delete', methods=['POST'])
+@requires_auth
+@requires_permission("MaintainMediaLibrary")
+def delete_file():
+  try:
+    json_data = {}
+    if request.json:
+      data = json.loads(request.data)
+      params = data['params']
+      file_id = params['file_id']
+      if file_id:
+        # Check if exists
+        row = gsdb.fetchone("SELECT * FROM gs_media_library WHERE file_id = %s", (file_id,))
+        if row is None:
+          return gs_make_response(message='Invalid file',
+                                  status=GStatusCode.ERROR,
+                                  httpstatus=400)
+        else:
+          full_path = os.path.join(UPLOAD_FOLDER, row['file_name'])
+          if full_path != '/':
+            os.remove(full_path)
+          qry = gsdb.execute("DELETE FROM gs_media_library WHERE file_id = %s", (file_id,))
+          return gs_make_response(message=f'File #{file_id} deleted')
+          
+      else:
+        return gs_make_response(message='Invalid data',
+                                status=GStatusCode.ERROR,
+                                httpstatus=400)
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Error processing request',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
 app.register_blueprint(media_library, url_prefix=config.get('general', 'urlprefix', fallback='/'))
