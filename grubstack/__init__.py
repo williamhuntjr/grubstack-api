@@ -79,6 +79,10 @@ gsdb = GrubDatabase(config)
 gsprod = GrubDatabase(config, os.environ.get('DATABASE_HOST'), os.environ.get('CORPORATE_DB'))
 cors = CORS(app, supports_credentials=True)
 
+# API defaults
+app.config['PER_PAGE'] = 10
+app.config['THUMBNAIL_PLACEHOLDER_IMG'] = '/assets/img/placeholder-image.jpg'
+
 # Logger
 from .loghandler import GrubStackLogHandler
 logformatter = logging.Formatter(config.get('logging', 'log_format', 

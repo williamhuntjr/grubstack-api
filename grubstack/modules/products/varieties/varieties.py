@@ -8,7 +8,15 @@ from grubstack.authentication import requires_auth, requires_permission
 
 variety = Blueprint('variety', __name__)
 logger = logging.getLogger('grubstack')
-per_page = 10
+per_page = app.config['PER_PAGE']
+
+def formatVariety(variety: dict):
+  return {
+    "id": variety['variety_id'],
+    "name": variety['name'],
+    "description": variety['description'],
+    "thumbnail_url": variety['thumbnail_url'],
+  }
 
 @variety.route('/varieties', methods=['GET'])
 @requires_auth
@@ -30,12 +38,7 @@ def get_all():
 
     varieties_list = []
     for variety in varieties:
-      varieties_list.append({
-        "id": variety['variety_id'],
-        "name": variety['name'],
-        "description": variety['description'],
-        "thumbnail_url": variety['thumbnail_url'],
-      })
+      varieties_list.append(formatVariety(variety))
 
     # Calculate paged data
     offset = page - 1
@@ -64,10 +67,10 @@ def create():
       data = json.loads(request.data)
       params = data['params']
       name = params['name']
-      description = params['description'] 
-      thumbnail_url = params['thumbnail_url']
+      description = params['description'] or ''
+      thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
 
-      if name and description and thumbnail_url:
+      if name:
         # Check if exists
         row = gsdb.fetchall("SELECT * from gs_variety WHERE name = %s", (name,))
 
@@ -76,7 +79,10 @@ def create():
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
         else:
-          qry = gsdb.execute("INSERT INTO gs_variety VALUES (%s, DEFAULT, %s, %s, %s)", (app.config["TENANT_ID"], name, description, thumbnail_url,))
+          qry = gsdb.execute("""INSERT INTO gs_variety
+                                (tenant_id, variety_id, name, description, thumbnail_url)
+                                VALUES 
+                                (%s, DEFAULT, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url,))
           row = gsdb.fetchone("SELECT * FROM gs_variety WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('variety.get', variety_id=row['variety_id'])}
@@ -107,12 +113,7 @@ def get(variety_id: int):
       # Check if exists
       row = gsdb.fetchone("SELECT * FROM gs_variety WHERE variety_id = %s", (variety_id,))
       if row: 
-        json_data = {
-          "id": row['variety_id'],
-          "name": row['name'],
-          "description": row['description'],
-          "thumbnail_url": row['thumbnail_url'],
-        }
+        json_data = formatVariety(row)
 
     return gs_make_response(data=json_data)
 
@@ -300,7 +301,10 @@ def add_ingredient():
                                   httpstatus=400)
         else:
           if not is_existing:
-            qry = gsdb.execute("INSERT INTO gs_variety_ingredient VALUES (%s, %s, %s)", (app.config["TENANT_ID"], variety_id, ingredient_id,))
+            qry = gsdb.execute("""INSERT INTO gs_variety_ingredient 
+                                  (tenant_id, variety_id, ingredient_id)
+                                  VALUES 
+                                  (%s, %s, %s)""", (app.config["TENANT_ID"], variety_id, ingredient_id,))
             return gs_make_response(message=f'Ingredient #{ingredient_id} added to variety')
           else:
             return gs_make_response(message=f'Ingredient already exists on variety',

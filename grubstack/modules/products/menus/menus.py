@@ -8,7 +8,15 @@ from grubstack.authentication import AuthError, requires_auth, requires_permissi
 
 menu = Blueprint('menu', __name__)
 logger = logging.getLogger('grubstack')
-per_page = 10
+per_page = app.config['PER_PAGE']
+
+def formatMenu(menu: dict):
+  return {
+    "id": menu['menu_id'],
+    "name": menu['name'],
+    "description": menu['description'],
+    "thumbnail_url": menu['thumbnail_url']
+  }
 
 @menu.route('/menus', methods=['GET'])
 @requires_auth
@@ -30,12 +38,7 @@ def get_all():
 
     menus_list = []
     for menu in menus:
-      menus_list.append({
-        "id": menu['menu_id'],
-        "name": menu['name'],
-        "description": menu['description'],
-        "thumbnail_url": menu['thumbnail_url']
-      })
+      menus_list.append(formatMenu(menu))
 
     # Calculate paged data
     offset = page - 1
@@ -64,10 +67,10 @@ def create():
       data = json.loads(request.data)
       params = data['params']
       name = params['name']
-      description = params['description'] 
-      thumbnail_url = params['thumbnail_url']
+      description = params['description'] or ''
+      thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
 
-      if name and description and thumbnail_url:
+      if name:
         # Check if exists
         row = gsdb.fetchall("SELECT * from gs_menu WHERE name = %s", (name,))
 
@@ -76,7 +79,10 @@ def create():
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
         else:
-          qry = gsdb.execute("INSERT INTO gs_menu VALUES (%s, DEFAULT, %s, %s, %s)", (app.config["TENANT_ID"], name, description, thumbnail_url,))
+          qry = gsdb.execute("""INSERT INTO gs_menu 
+                                (tenant_id, menu_id, name, description, thumbnail_url)
+                                VALUES
+                                (%s, DEFAULT, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url,))
           row = gsdb.fetchone("SELECT * FROM gs_menu WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('menu.get', menu_id=row['menu_id'])}
@@ -107,11 +113,7 @@ def get(menu_id: int):
       # Check if exists
       row = gsdb.fetchone("SELECT * FROM gs_menu WHERE menu_id = %s", (menu_id,))
       if row: 
-        json_data = {
-          "id": row['menu_id'],
-          "name": row['name'],
-          "description": row['description'],
-        }
+        json_data = formatMenu(row)
 
     return gs_make_response(data=json_data)
 
@@ -296,7 +298,10 @@ def add_item():
                                   httpstatus=400)
         else:
           if not is_existing:
-            qry = gsdb.execute("INSERT INTO gs_menu_item VALUES (%s, %s, %s, %s, %s, %s)", (app.config["TENANT_ID"], menu_id, item_id, price, sale_price, is_onsale,))
+            qry = gsdb.execute("""INSERT INTO gs_menu_item 
+                                  (tenant_id, menu_id, item_id, price, sale_price, is_onsale)
+                                  VALUES 
+                                  (%s, %s, %s, %s, %s, %s)""", (app.config["TENANT_ID"], menu_id, item_id, price, sale_price, is_onsale,))
             return gs_make_response(message=f'Item #{item_id} added to menu')
           else:
             return gs_make_response(message=f'Item already exists on menu',

@@ -8,7 +8,16 @@ from grubstack.authentication import requires_auth, requires_permission
 
 item = Blueprint('item', __name__)
 logger = logging.getLogger('grubstack')
-per_page = 10
+per_page = app.config['PER_PAGE']
+
+def formatItems(item: dict, varieties_list: list):
+  return {
+    "id": item['item_id'],
+    "name": item['name'],
+    "description": item['description'],
+    "thumbnail_url": item['thumbnail_url'],
+    "varieties": varieties_list
+  }
 
 @item.route('/items', methods=['GET'])
 @requires_auth
@@ -43,13 +52,7 @@ def get_all():
           "thumbnail_url": variety['thumbnail_url'],
         })
 
-      items_list.append({
-        "id": item['item_id'],
-        "name": item['name'],
-        "description": item['description'],
-        "thumbnail_url": item['thumbnail_url'],
-        "varieties": varieties_list
-      })
+      items_list.append(formatItems(item, varieties_list))
 
     # Calculate paged data
     offset = page - 1
@@ -78,10 +81,10 @@ def create():
       data = json.loads(request.data)
       params = data['params']
       name = params['name']
-      description = params['description'] 
-      thumbnail_url = params['thumbnail_url']
+      description = params['description'] or ''
+      thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
 
-      if name and description and thumbnail_url:
+      if name:
         # Check if exists
         row = gsdb.fetchall("SELECT * from gs_item WHERE name = %s", (name,))
 
@@ -90,7 +93,10 @@ def create():
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
         else:
-          qry = gsdb.execute("INSERT INTO gs_item VALUES (%s, DEFAULT, %s, %s, %s)", (app.config["TENANT_ID"], name, description, thumbnail_url,))
+          qry = gsdb.execute("""INSERT INTO gs_item
+                                (tenant_id, item_id, name, description, thumbnail_url)
+                                VALUES 
+                                (%s, DEFAULT, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url,))
           row = gsdb.fetchone("SELECT * FROM gs_item WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('item.get', item_id=row['item_id'])}
@@ -121,12 +127,20 @@ def get(item_id: int):
       # Check if exists
       row = gsdb.fetchone("SELECT * FROM gs_item WHERE item_id = %s", (item_id,))
       if row: 
-        json_data = {
-          "id": row['item_id'],
-          "name": row['name'],
-          "description": row['description'],
-          "thumbnail_url": row['thumbnail_url'],
-        }
+        varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url
+                            FROM gs_variety c INNER JOIN gs_item_variety p ON p.variety_id = c.variety_id 
+                            WHERE p.item_id = %s ORDER BY name ASC""", (row['item_id'],))
+
+        varieties_list = []
+        for variety in varieties:
+          varieties_list.append({
+            "id": variety['variety_id'],
+            "name": variety['name'],
+            "description": variety['description'],
+            "thumbnail_url": variety['thumbnail_url'],
+          })
+
+        json_data = formatItems(row, varieties_list)
 
     return gs_make_response(data=json_data)
 
@@ -318,7 +332,10 @@ def add_ingredient():
                                   httpstatus=400)
         else:
           if not is_existing:
-            qry = gsdb.execute("INSERT INTO gs_item_ingredient VALUES (%s, %s, %s, 'f', 'f', 'f')", (app.config["TENANT_ID"], item_id, ingredient_id,))
+            qry = gsdb.execute("""INSERT INTO gs_item_ingredient 
+                                  (tenant_id, item_id, ingredient_id, is_optional, is_addon, is_extra)
+                                  VALUES 
+                                  (%s, %s, %s, 'f', 'f', 'f')""", (app.config["TENANT_ID"], item_id, ingredient_id,))
             return gs_make_response(message=f'Ingredient #{ingredient_id} added to item')
           else:
             return gs_make_response(message=f'Ingredient already exists on item',

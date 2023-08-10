@@ -8,7 +8,20 @@ from grubstack.authentication import requires_auth, requires_permission
 
 store = Blueprint('store', __name__)
 logger = logging.getLogger('grubstack')
-per_page = 10
+per_page = app.config['PER_PAGE']
+
+def formatStore(store: dict, menus_list: list):
+  return {
+    "id": store['store_id'],
+    "name": store['name'],
+    "address1": store['address1'],
+    "city": store['city'],
+    "state": store['state'],
+    "postal": store['postal'],
+    "store_type": store['store_type'],
+    "thumbnail_url": store['thumbnail_url'],
+    "menus": menus_list
+  }
 
 @store.route('/stores', methods=['GET'])
 @requires_auth
@@ -43,17 +56,7 @@ def get_all():
             "thumbnail_url": menu['thumbnail_url'],
           })
 
-      stores_list.append({
-        "id": store['store_id'],
-        "name": store['name'],
-        "address1": store['address1'],
-        "city": store['city'],
-        "state": store['state'],
-        "postal": store['postal'],
-        "store_type": store['store_type'],
-        "thumbnail_url": store['thumbnail_url'],
-        "menus": menus_list
-      })
+      stores_list.append(formatStore(store, menus_list))
 
     # Calculate paged data
     offset = page - 1
@@ -82,14 +85,14 @@ def create():
       data = json.loads(request.data)
       params = data['params']
       name = params['name']
-      address1 = params['address1'] 
-      city = params['city'] 
-      state = params['state'] 
-      postal = params['postal'] 
-      store_type = params['store_type'] 
-      thumbnail_url = params['thumbnail_url'] 
+      address1 = params['address1'] or ''
+      city = params['city'] or ''
+      state = params['state'] or ''
+      postal = params['postal'] or ''
+      store_type = params['store_type'] or ''
+      thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
 
-      if name and address1 and city and state and postal and store_type and thumbnail_url:
+      if name:
         # Check if exists
         row = gsdb.fetchall("SELECT * FROM gs_store WHERE name = %s AND store_type = %s ORDER BY name ASC", (name, store_type,))
 
@@ -98,7 +101,10 @@ def create():
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
         else:
-          qry = gsdb.execute("INSERT INTO gs_store VALUES (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s)", (app.config["TENANT_ID"], name, address1, city, state, postal, store_type, thumbnail_url))
+          qry = gsdb.execute("""INSERT INTO gs_store 
+                                (tenant_id, store_id, name, address1, city, state, postal, store_type, thumbnail_url) 
+                                VALUES 
+                                (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, address1, city, state, postal, store_type, thumbnail_url))
           row = gsdb.fetchone("SELECT * FROM gs_store WHERE name = %s AND store_type = %s", (name, store_type,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('store.get', store_id=row['store_id'])}
@@ -140,17 +146,7 @@ def get(store_id: int):
             "thumbnail_url": menu['thumbnail_url'],
           })
 
-      json_data = {
-        "id": row['store_id'],
-        "name": row['name'],
-        "address1": row['address1'],
-        "city": row['city'],
-        "state": row['state'],
-        "postal": row['postal'],
-        "store_type": row['store_type'],
-        "thumbnail_url": row['thumbnail_url'],
-        "menus": menus_list
-      }
+      json_data = formatStore(row, menus_list)
 
     return gs_make_response(data=json_data)
 
@@ -306,7 +302,10 @@ def add_menu():
                                   httpstatus=400)
         else:
           if not is_existing:
-            qry = gsdb.execute("INSERT INTO gs_store_menu VALUES (%s, %s, %s)", (app.config["TENANT_ID"], store_id, menu_id,))
+            qry = gsdb.execute("""INSERT INTO gs_store_menu 
+                                  (tenant_id, store_id, menu_id)
+                                  VALUES 
+                                  (%s, %s, %s)""", (app.config["TENANT_ID"], store_id, menu_id,))
             return gs_make_response(message=f'Menu #{menu_id} added to store')
           else:
             return gs_make_response(message=f'Menu already exists on store',

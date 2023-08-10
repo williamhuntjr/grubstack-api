@@ -8,7 +8,7 @@ from grubstack.authentication import requires_auth, requires_permission
 
 ingredient = Blueprint('ingredient', __name__)
 logger = logging.getLogger('grubstack')
-per_page = 10
+per_page = app.config['PER_PAGE']
 
 def buildGramMeasurement(amount: int):
   measurement = {
@@ -30,6 +30,24 @@ def buildMilligramMeasurement(amount: int):
   }
   return measurement
 
+def formatIngredient(ingredient: dict):
+  return {
+    "id": ingredient['ingredient_id'],
+    "name": ingredient['name'],
+    "description": ingredient['description'],
+    "thumbnail_url": ingredient['thumbnail_url'],
+    "calories": ingredient['calories'],
+    "fat": ingredient['fat'],
+    "saturated_fat": ingredient['saturated_fat'],
+    "trans_fat": ingredient['trans_fat'],
+    "cholesterol": ingredient['cholesterol'],
+    "sodium": ingredient['sodium'],
+    "carbs": ingredient['carbs'],
+    "protein": ingredient['protein'],
+    "sugar": ingredient['sugar'],
+    "fiber": ingredient['fiber'],
+    "price": ingredient['price']
+  }
 
 @ingredient.route('/ingredients', methods=['GET'])
 @requires_auth
@@ -51,23 +69,7 @@ def get_all():
 
     ingredients_list = []
     for ingredient in ingredients:
-      ingredients_list.append({
-        "id": ingredient['ingredient_id'],
-        "name": ingredient['name'],
-        "description": ingredient['description'],
-        "thumbnail_url": ingredient['thumbnail_url'],
-        "calories": ingredient['calories'],
-        "fat": ingredient['fat'],
-        "saturated_fat": ingredient['saturated_fat'],
-        "trans_fat": ingredient['trans_fat'],
-        "cholesterol": ingredient['cholesterol'],
-        "sodium": ingredient['sodium'],
-        "carbs": ingredient['carbs'],
-        "protein": ingredient['protein'],
-        "sugar": ingredient['sugar'],
-        "fiber": ingredient['fiber'],
-        "price": ingredient['price'],
-      })
+      ingredients_list.append(formatIngredient(ingredient))
 
     # Calculate paged data
     offset = page - 1
@@ -96,21 +98,21 @@ def create():
       data = json.loads(request.data)
       params = data['params']
       name = params['name']
-      description = params['description'] 
-      thumbnail_url = params['thumbnail_url']
-      calories = params['calories']
-      fat = params['fat']
-      saturated_fat = params['saturated_fat']
-      trans_fat = params['trans_fat']
-      cholesterol = params['cholesterol']
-      sodium = params['sodium']
-      carbs = params['carbs']
-      protein = params['protein']
-      sugar = params['sugar']
-      fiber = params['fiber']
-      price = params['price']
+      description = params['description'] or ''
+      thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
+      calories = params['calories'] or 0.0
+      fat = params['fat'] or 0.0
+      saturated_fat = params['saturated_fat'] or 0.0
+      trans_fat = params['trans_fat'] or 0.0
+      cholesterol = params['cholesterol'] or 0.0
+      sodium = params['sodium'] or 0.0
+      carbs = params['carbs'] or 0.0
+      protein = params['protein'] or 0.0
+      sugar = params['sugar'] or 0.0
+      fiber = params['fiber'] or 0.0
+      price = params['price'] or 0.0
 
-      if name and description and thumbnail_url and calories is not None and fat is not None and saturated_fat is not None and trans_fat is not None and cholesterol is not None and sodium is not None and carbs is not None and protein is not None and sugar is not None and fiber is not None and price is not None:
+      if name:
         # Check if exists
         row = gsdb.fetchall("SELECT * from gs_ingredient WHERE name = %s", (name,))
 
@@ -119,7 +121,11 @@ def create():
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
         else:
-          qry = gsdb.execute("INSERT INTO gs_ingredient VALUES (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (app.config["TENANT_ID"], name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price,))
+          qry = gsdb.execute("""INSERT INTO gs_ingredient
+                                (tenant_id, ingredient_id, name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price)
+                                VALUES
+                                (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                            """, (app.config["TENANT_ID"], name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price,))
           row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('ingredient.get', ingredient_id=row['ingredient_id'])}
@@ -150,23 +156,7 @@ def get(ingredient_id: int):
       # Check if exists
       row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
       if row: 
-        json_data = {
-          "id": row['ingredient_id'],
-          "name": row['name'],
-          "description": row['description'],
-          "thumbnail_url": row['thumbnail_url'],
-          "calories": row['calories'],
-          "fat": row['fat'],
-          "saturated_fat": row['saturated_fat'],
-          "trans_fat": row['trans_fat'],
-          "cholesterol": row['cholesterol'],
-          "sodium": row['sodium'],
-          "carbs": row['carbs'],
-          "protein": row['protein'],
-          "sugar": row['sugar'],
-          "fiber": row['fiber'],
-          "price": row['price'],
-        }
+        json_data = formatIngredient(row)
 
     return gs_make_response(data=json_data)
 
