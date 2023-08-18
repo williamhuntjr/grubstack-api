@@ -98,6 +98,16 @@ def requires_auth(f):
                       "description": "Unable to find appropriate key" }, 401)
   return decorated
 
+def requires_token(f):
+  @wraps(f)
+  def decorated(*args, **kwargs):
+    auth_header = request.headers.get('Authorization')
+    if auth_header != 'Bearer ' + app.config['API_TOKEN']:
+      raise AuthError({ "code": "invalid_tenant",
+                  "description":"You do not have access to this tenant." }, 403)
+    return f(*args, **kwargs)
+  return decorated
+
 def requires_scope(required_scope):
   def decorator(func):
     @wraps(func)

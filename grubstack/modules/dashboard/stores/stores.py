@@ -5,69 +5,30 @@ from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
+from .stores_utilities import formatStore, getStores, formatParams
 
 store = Blueprint('store', __name__)
 logger = logging.getLogger('grubstack')
-per_page = app.config['PER_PAGE']
 
-def formatStore(store: dict, menus_list: list):
-  return {
-    "id": store['store_id'],
-    "name": store['name'],
-    "address1": store['address1'],
-    "city": store['city'],
-    "state": store['state'],
-    "postal": store['postal'],
-    "store_type": store['store_type'],
-    "thumbnail_url": store['thumbnail_url'],
-    "menus": menus_list
-  }
+PER_PAGE = app.config['PER_PAGE']
 
 @store.route('/stores', methods=['GET'])
 @requires_auth
 @requires_permission("ViewStores")
 def get_all():
   try:
-    json_data = []
-    stores = gsdb.fetchall("SELECT * FROM gs_store ORDER BY name ASC")
-    
     # Get route parameters
     page = request.args.get('page')
     limit = request.args.get('limit')
 
-    if limit is None: limit = per_page
+    if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
+    json_data, total_rows, total_pages = getStores(page, limit)
 
-    stores_list = []
-    for store in stores:
-      menus = gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url
-                                FROM gs_menu c INNER JOIN gs_store_menu p ON p.menu_id = c.menu_id 
-                                WHERE p.store_id = %s ORDER BY name ASC""", (store['store_id'],))
-      menus_list = []
-      if menus != None:
-        for menu in menus:
-          menus_list.append({
-            "id": menu['menu_id'],
-            "name": menu['name'],
-            "description": menu['description'],
-            "thumbnail_url": menu['thumbnail_url'],
-          })
-
-      stores_list.append(formatStore(store, menus_list))
-
-    # Calculate paged data
-    offset = page - 1
-    start = offset * limit
-    end = start + limit
-    total_pages = ceil(len(stores) / limit)
-
-    # Get paged data
-    json_data = stores_list[start:end]
-
-    return gs_make_response(data=json_data, totalrowcount=len(stores), totalpages=total_pages)
+    return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
   except Exception as e:
     logger.exception(e)
@@ -84,13 +45,8 @@ def create():
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      name = params['name']
-      address1 = params['address1'] or ''
-      city = params['city'] or ''
-      state = params['state'] or ''
-      postal = params['postal'] or ''
-      store_type = params['store_type'] or ''
-      thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
+
+      name, address1, city, state, postal, store_type, thumbnail_url = formatParams(params)
 
       if name:
         # Check if exists
@@ -197,13 +153,7 @@ def update():
       data = json.loads(request.data)
       params = data['params']
       store_id = params['id']
-      name = params['name']
-      address1 = params['address1'] 
-      city = params['city'] 
-      state = params['state'] 
-      postal = params['postal'] 
-      store_type = params['store_type'] 
-      thumbnail_url = params['thumbnail_url'] 
+      name, address1, city, state, postal, store_type, thumbnail_url = formatParams(params)
 
       if store_id and name and address1 and city and state and postal and store_type and thumbnail_url:
         # Check if exists
@@ -237,41 +187,19 @@ def update():
 @requires_permission("MaintainStores")
 def get_all_menus(storeId):
   try:
-    json_data = []
-    menus = gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url
-                            FROM gs_menu c INNER JOIN gs_store_menu p ON p.menu_id = c.menu_id 
-                            WHERE p.store_id = %s ORDER BY name ASC""", (storeId,))
-
     # Get route parameters
     page = request.args.get('page')
     limit = request.args.get('limit')
 
-    if limit is None: limit = per_page
+    if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
 
-    menus_list = []
-    if menus != None:
-      for menu in menus:
-        menus_list.append({
-          "id": menu['menu_id'],
-          "name": menu['name'],
-          "description": menu['description'],
-          "thumbnail_url": menu['thumbnail_url'],
-        })
+    json_data, total_rows, total_pages = getStoreMenus(storeId, page, limit)
 
-    # Calculate paged data
-    offset = page - 1
-    start = offset * limit
-    end = start + limit
-    total_pages = ceil(len(menus) / limit)
-
-    # Get paged data
-    json_data = menus_list[start:end]
-
-    return gs_make_response(data=json_data, totalrowcount=len(menus), totalpages=total_pages)
+    return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
   except Exception as e:
     logger.exception(e)

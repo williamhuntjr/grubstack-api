@@ -80,7 +80,7 @@ gsprod = GrubDatabase(config, os.environ.get('DATABASE_HOST'), os.environ.get('C
 cors = CORS(app, supports_credentials=True)
 
 # API defaults
-app.config['PER_PAGE'] = 10
+app.config['PER_PAGE'] = os.environ.get('MAIL_EMAILED') or 10
 app.config['THUMBNAIL_PLACEHOLDER_IMG'] = '/assets/img/placeholder-image.jpg'
 
 # Logger

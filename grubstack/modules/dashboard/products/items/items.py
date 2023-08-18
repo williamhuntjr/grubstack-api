@@ -5,65 +5,30 @@ from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
+from .items_utilities import formatItems, getItems, getItemIngredients, formatParams
 
 item = Blueprint('item', __name__)
 logger = logging.getLogger('grubstack')
-per_page = app.config['PER_PAGE']
-
-def formatItems(item: dict, varieties_list: list):
-  return {
-    "id": item['item_id'],
-    "name": item['name'],
-    "description": item['description'],
-    "thumbnail_url": item['thumbnail_url'],
-    "varieties": varieties_list
-  }
+PER_PAGE = app.config['PER_PAGE']
 
 @item.route('/items', methods=['GET'])
 @requires_auth
 @requires_permission("ViewItems")
 def get_all():
   try:
-    json_data = []
-    items = gsdb.fetchall("SELECT * FROM gs_item ORDER BY name ASC")
-    
     # Get route parameters
     page = request.args.get('page')
     limit = request.args.get('limit')
 
-    if limit is None: limit = per_page
+    if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
 
-    items_list = []
-    for item in items:
-      varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url
-                          FROM gs_variety c INNER JOIN gs_item_variety p ON p.variety_id = c.variety_id 
-                          WHERE p.item_id = %s ORDER BY name ASC""", (item['item_id'],))
+    json_data, total_rows, total_pages = getItems(page, limit)
 
-      varieties_list = []
-      for variety in varieties:
-        varieties_list.append({
-          "id": variety['variety_id'],
-          "name": variety['name'],
-          "description": variety['description'],
-          "thumbnail_url": variety['thumbnail_url'],
-        })
-
-      items_list.append(formatItems(item, varieties_list))
-
-    # Calculate paged data
-    offset = page - 1
-    start = offset * limit
-    end = start + limit
-    total_pages = ceil(len(items) / limit)
-
-    # Get paged data
-    json_data = items_list[start:end]
-
-    return gs_make_response(data=json_data, totalrowcount=len(items), totalpages=total_pages)
+    return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
   except Exception as e:
     logger.exception(e)
@@ -80,9 +45,7 @@ def create():
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      name = params['name']
-      description = params['description'] or ''
-      thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
+      name, description, thumbnail_url = formatParams(params)
 
       if name:
         # Check if exists
@@ -193,9 +156,7 @@ def update():
       data = json.loads(request.data)
       params = data['params']
       item_id = params['id']
-      name = params['name']
-      description = params['description'] 
-      thumbnail_url = params['thumbnail_url']
+      name, description, thumbnail_url = formatParams(params)
 
       if item_id and name and description and thumbnail_url:
         # Check if exists
@@ -255,53 +216,19 @@ def get_item(itemId):
 @requires_permission("ViewItems")
 def get_all_ingredients(itemId):
   try:
-    json_data = []
-    ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber, is_optional, is_addon, is_extra
-                                    FROM gs_ingredient c INNER JOIN gs_item_ingredient p ON p.ingredient_id = c.ingredient_id 
-                                    WHERE p.item_id = %s ORDER BY name ASC""", (itemId,))
-    
     # Get route parameters
     page = request.args.get('page')
     limit = request.args.get('limit')
 
-    if limit is None: limit = per_page
+    if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
 
-    ingredients_list = []
-    for ingredient in ingredients:
-      ingredients_list.append({
-        "id": ingredient['ingredient_id'],
-        "name": ingredient['name'],
-        "description": ingredient['description'],
-        "thumbnail_url": ingredient['thumbnail_url'],
-        "calories": ingredient['calories'],
-        "fat": ingredient['fat'],
-        "saturated_fat": ingredient['saturated_fat'],
-        "trans_fat": ingredient['trans_fat'],
-        "cholesterol": ingredient['cholesterol'],
-        "sodium": ingredient['sodium'],
-        "carbs": ingredient['carbs'],
-        "protein": ingredient['protein'],
-        "sugar": ingredient['sugar'],
-        "fiber": ingredient['fiber'],
-        "is_optional": ingredient['is_optional'],
-        "is_addon": ingredient['is_addon'],
-        "is_extra": ingredient['is_extra'],
-      })
+    json_data, total_rows, total_pages = getItemIngredients(itemId, page, limit)
 
-    # Calculate paged data
-    offset = page - 1
-    start = offset * limit
-    end = start + limit
-    total_pages = ceil(len(ingredients) / limit)
-
-    # Get paged data
-    json_data = ingredients_list[start:end]
-
-    return gs_make_response(data=json_data, totalrowcount=len(ingredients), totalpages=total_pages)
+    return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
   except Exception as e:
     logger.exception(e)

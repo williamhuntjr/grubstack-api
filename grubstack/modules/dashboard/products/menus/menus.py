@@ -5,51 +5,31 @@ from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import AuthError, requires_auth, requires_permission
+from .menus_utilities import formatMenu, getMenus, formatParams, getMenuItems
 
 menu = Blueprint('menu', __name__)
 logger = logging.getLogger('grubstack')
-per_page = app.config['PER_PAGE']
 
-def formatMenu(menu: dict):
-  return {
-    "id": menu['menu_id'],
-    "name": menu['name'],
-    "description": menu['description'],
-    "thumbnail_url": menu['thumbnail_url']
-  }
+PER_PAGE = app.config['PER_PAGE']
 
 @menu.route('/menus', methods=['GET'])
 @requires_auth
 @requires_permission("ViewMenus")
 def get_all():
   try:
-    json_data = []
-    menus = gsdb.fetchall("SELECT * FROM gs_menu ORDER BY name ASC")
-    
     # Get route parameters
     page = request.args.get('page')
     limit = request.args.get('limit')
 
-    if limit is None: limit = per_page
+    if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
 
-    menus_list = []
-    for menu in menus:
-      menus_list.append(formatMenu(menu))
+    json_data, total_rows, total_pages = getMenus(page, limit)
 
-    # Calculate paged data
-    offset = page - 1
-    start = offset * limit
-    end = start + limit
-    total_pages = ceil(len(menus) / limit)
-
-    # Get paged data
-    json_data = menus_list[start:end]
-
-    return gs_make_response(data=json_data, totalrowcount=len(menus), totalpages=total_pages)
+    return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
   except Exception as e:
     logger.exception(e)
@@ -66,9 +46,7 @@ def create():
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      name = params['name']
-      description = params['description'] or ''
-      thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
+      name, description, thumbnail_url = formatParams(params)
 
       if name:
         # Check if exists
@@ -166,9 +144,7 @@ def update():
       data = json.loads(request.data)
       params = data['params']
       menu_id = params['id']
-      name = params['name']
-      description = params['description'] 
-      thumbnail_url = params['thumbnail_url']
+      name, description, thumbnail_url = formatParams(params)
 
       if menu_id and name and description and thumbnail_url:
         # Check if exists
@@ -228,43 +204,19 @@ def get_menu(menuId):
 @requires_permission("ViewMenus")
 def get_all_items(menuId):
   try:
-    json_data = []
-    items = gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, price, sale_price, is_onsale
-                                    FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
-                                    WHERE p.menu_id = %s ORDER BY name ASC""", (menuId,))
-    
     # Get route parameters
     page = request.args.get('page')
     limit = request.args.get('limit')
 
-    if limit is None: limit = per_page
+    if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
 
-    items_list = []
-    for item in items:
-      items_list.append({
-        "id": item['item_id'],
-        "name": item['name'],
-        "description": item['description'],
-        "thumbnail_url": item['thumbnail_url'],
-        "price": item['price'],
-        "sale_price": item['sale_price'],
-        "is_onsale": item['is_onsale']
-      })
+    json_data, total_rows, total_pages = getMenuItems(menuId, page, limit)
 
-    # Calculate paged data
-    offset = page - 1
-    start = offset * limit
-    end = start + limit
-    total_pages = ceil(len(items) / limit)
-
-    # Get paged data
-    json_data = items_list[start:end]
-
-    return gs_make_response(data=json_data, totalrowcount=len(items), totalpages=total_pages)
+    return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
   except Exception as e:
     logger.exception(e)

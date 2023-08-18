@@ -3,24 +3,17 @@ from datetime import datetime
 from math import ceil
 from flask import Blueprint, request
 from werkzeug.utils import secure_filename
-
 from grubstack import app, config, gsdb
-
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
+from .media_library_utilities import allowed_file
 
 media_library = Blueprint('media_library', __name__)
 logger = logging.getLogger('grubstack')
 
 UPLOAD_FOLDER = '/uploads/' + app.config['TENANT_ID']
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
-per_page = 30
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+PER_PAGE = 30
 
 @media_library.route('/media-library', methods=['GET'])
 @requires_auth
@@ -34,7 +27,7 @@ def get_all():
     page = request.args.get('page')
     limit = request.args.get('limit')
 
-    if limit is None: limit = per_page
+    if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
