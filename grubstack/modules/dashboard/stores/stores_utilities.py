@@ -13,6 +13,7 @@ def formatStore(store: dict, menus_list: list):
     "postal": store['postal'],
     "store_type": store['store_type'],
     "thumbnail_url": store['thumbnail_url'],
+    "phone_number": store['phone_number'],
     "menus": menus_list
   }
 
@@ -24,8 +25,9 @@ def formatParams(params: dict):
   postal = params['postal'] or ''
   store_type = params['store_type'] or ''
   thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
+  phone_number = params['phone_number'] or ''
 
-  return (name, address1, city, state, postal, store_type, thumbnail_url)
+  return (name, address1, city, state, postal, store_type, thumbnail_url, phone_number)
 
 def getStores(page: int = 1, limit: int = PER_PAGE):
   json_data = []

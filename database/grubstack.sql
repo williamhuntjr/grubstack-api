@@ -66,12 +66,13 @@ CREATE TABLE public.gs_store (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
     store_id SERIAL PRIMARY KEY NOT NULL,                                                                                                 
     name character varying(64) NOT NULL,                                                                                                                 
-    address1 character varying(255),                                                                                                             
-    city character varying(64),                                                                                                
-    state character varying(64),                                                                                               
-    postal character varying(32),                                                                                              
-    store_type character varying(32),                                                                                                           
-    thumbnail_url text                                                                                                         
+    address1 character varying(255) NOT NULL,                                                                                                             
+    city character varying(64) NOT NULL,                                                                                                
+    state character varying(64) NOT NULL,                                                                                               
+    postal character varying(32) NOT NULL,                                                                                              
+    store_type character varying(32) NOT NULL,                                                                                                           
+    thumbnail_url text,
+    phone_number character varying(32) NOT NULL                                                                                                        
 );                                                                                                                             
 ALTER TABLE public.gs_store OWNER TO grubstack;                                                                                
 

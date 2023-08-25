@@ -46,7 +46,7 @@ def create():
       data = json.loads(request.data)
       params = data['params']
 
-      name, address1, city, state, postal, store_type, thumbnail_url = formatParams(params)
+      name, address1, city, state, postal, store_type, thumbnail_url, phone_number = formatParams(params)
 
       if name:
         # Check if exists
@@ -58,9 +58,9 @@ def create():
                                   httpstatus=400)
         else:
           qry = gsdb.execute("""INSERT INTO gs_store 
-                                (tenant_id, store_id, name, address1, city, state, postal, store_type, thumbnail_url) 
+                                (tenant_id, store_id, name, address1, city, state, postal, store_type, thumbnail_url, phone_number) 
                                 VALUES 
-                                (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, address1, city, state, postal, store_type, thumbnail_url))
+                                (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, address1, city, state, postal, store_type, thumbnail_url, phone_number))
           row = gsdb.fetchone("SELECT * FROM gs_store WHERE name = %s AND store_type = %s", (name, store_type,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('store.get', store_id=row['store_id'])}
@@ -153,9 +153,9 @@ def update():
       data = json.loads(request.data)
       params = data['params']
       store_id = params['id']
-      name, address1, city, state, postal, store_type, thumbnail_url = formatParams(params)
+      name, address1, city, state, postal, store_type, thumbnail_url, phone_number = formatParams(params)
 
-      if store_id and name and address1 and city and state and postal and store_type and thumbnail_url:
+      if store_id and name:
         # Check if exists
         row = gsdb.fetchone("SELECT * FROM gs_store WHERE store_id = %s", (store_id,))
 
@@ -164,7 +164,7 @@ def update():
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          qry = gsdb.execute("UPDATE gs_store SET (name, address1, city, state, postal, store_type, thumbnail_url) = (%s, %s, %s, %s, %s, %s, %s) WHERE store_id = %s", (name, address1, city, state, postal, store_type, thumbnail_url, store_id,))
+          qry = gsdb.execute("UPDATE gs_store SET (name, address1, city, state, postal, store_type, thumbnail_url, phone_number) = (%s, %s, %s, %s, %s, %s, %s, %s) WHERE store_id = %s", (name, address1, city, state, postal, store_type, thumbnail_url, phone_number, store_id,))
           headers = {'Location': url_for('store.get', store_id=store_id)}
           return gs_make_response(message=f'Store {name} successfully updated',
                     httpstatus=201,
