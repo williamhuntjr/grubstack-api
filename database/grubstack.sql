@@ -5,7 +5,8 @@ CREATE TABLE public.gs_tenant (
     tenant_id uuid DEFAULT public.uuid_generate_v4() PRIMARY KEY NOT NULL,
     is_suspended boolean DEFAULT false,
     is_active boolean DEFAULT true,
-    slug character varying(12)
+    slug character varying(12) NOT NULL,
+    access_token character varying(16) NOT NULL
 );
 ALTER TABLE public.gs_tenant OWNER TO grubstack;
 
