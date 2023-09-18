@@ -81,7 +81,7 @@ def upload_file():
         os.mkdir(UPLOAD_FOLDER) 
 
       now = datetime.now()
-      timestamp = now.strftime("-%d_%m_%Y_%H:%M:%S")
+      timestamp = now.strftime("-%m_%d_%Y_%H:%M:%S")
 
       filename = secure_filename(file.filename)
       formatted_filename = os.path.splitext(filename)[0] + timestamp + os.path.splitext(filename)[1]
@@ -125,6 +125,7 @@ def delete_file():
         else:
           full_path = os.path.join(UPLOAD_FOLDER, row['file_name'])
           if full_path != '/':
+            print("deleting " + full_path)
             os.remove(full_path)
           qry = gsdb.execute("DELETE FROM gs_media_library WHERE file_id = %s", (file_id,))
           return gs_make_response(message=f'File #{file_id} deleted')

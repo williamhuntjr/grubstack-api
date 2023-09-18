@@ -62,7 +62,22 @@ CREATE TABLE public.gs_user_role (
 );
 ALTER TABLE public.gs_user_role OWNER TO grubstack;
 
-                                                                                                                               
+CREATE TABLE public.gs_franchise ( 
+    tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
+    franchise_id SERIAL PRIMARY KEY NOT NULL,                                                                                                 
+    name character varying(64) NOT NULL,
+    description character varying(255),
+    thumbnail_url text                                                                                                                                                                                                      
+);                                                                                                                             
+ALTER TABLE public.gs_franchise OWNER TO grubstack;                                                                                
+
+CREATE TABLE public.gs_franchise_store (
+    tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
+    franchise_id integer NOT NULL,
+    store_id integer NOT NULL
+);
+ALTER TABLE public.gs_franchise_store OWNER TO grubstack;
+
 CREATE TABLE public.gs_store ( 
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
     store_id SERIAL PRIMARY KEY NOT NULL,                                                                                                 
@@ -214,6 +229,8 @@ ALTER TABLE gs_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_permission ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_store ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_franchise ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_franchise_store ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_ingredient ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_menu ENABLE ROW LEVEL SECURITY;
@@ -232,6 +249,8 @@ ALTER TABLE gs_log FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_permission FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_store FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_franchise FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_franchise_store FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_ingredient FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_log FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_menu FORCE ROW LEVEL SECURITY;
@@ -250,6 +269,8 @@ CREATE POLICY tenant_isolation_policy ON gs_log USING (tenant_id = current_setti
 CREATE POLICY tenant_isolation_policy ON gs_user_role USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_user_permission USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_store USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_franchise USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_franchise_store USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_ingredient USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_menu USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_menu_item USING (tenant_id = current_setting('app.tenant_id')::UUID);
@@ -277,6 +298,8 @@ INSERT INTO gs_permission VALUES (11, 'ViewMediaLibrary', 'Allow user to view me
 INSERT INTO gs_permission VALUES (12, 'MaintainMediaLibrary', 'Allow user to to add, delete, and update media library files');
 INSERT INTO gs_permission VALUES (13, 'ViewEmployees', 'Allow user to view employees');
 INSERT INTO gs_permission VALUES (14, 'MaintainEmployees', 'Allow user to to add, delete, and update employees');
+INSERT INTO gs_permission VALUES (15, 'ViewFranchises', 'Allow user to view franchises');
+INSERT INTO gs_permission VALUES (16, 'MaintainFranchises', 'Allow user to to add, delete, and update franchises');
 
 INSERT INTO gs_role VALUES (1, 'Administrator', 'Provides full access to the dashboard');
 INSERT INTO gs_role VALUES (2, 'Employee', 'Provides read-only access to dashboard');

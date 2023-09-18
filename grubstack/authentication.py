@@ -54,48 +54,55 @@ def get_user_id():
 def requires_auth(f):
   @wraps(f)
   def decorated(*args, **kwargs):
-    token = get_token_auth_header()
-    jsonurl = urlopen("https://"+AUTH0_DOMAIN+"/.well-known/jwks.json")
-    jwks = json.loads(jsonurl.read())
-    unverified_header = jwt.get_unverified_header(token)
-    rsa_key = {}
-    for key in jwks["keys"]:
-      if key["kid"] == unverified_header["kid"]:
-        rsa_key = {
-          "kty": key["kty"],
-          "kid": key["kid"],
-          "use": key["use"],
-          "n": key["n"],
-          "e": key["e"]
-        }
-    if rsa_key:
-      try:
-        payload = jwt.decode(
-          token,
-          rsa_key,
-          algorithms=ALGORITHMS,
-          audience=AUTH0_AUDIENCE,
-          issuer="https://"+AUTH0_DOMAIN+"/"
-        )
-      except jwt.ExpiredSignatureError:
-          raise AuthError({ "code": "token_expired",
-                            "description": "token is expired" }, 401)
-      except jwt.JWTClaimsError:
-          raise AuthError({ "code": "invalid_claims",
-                            "description":"incorrect claims, please check the audience and issuer" }, 401)
-      except Exception:
-          raise AuthError({ "code": "invalid_header",
-                            "description":"Unable to parse authentication token." }, 401)
-
-      _request_ctx_stack.top.current_user = payload
-      row = gsprod.fetchall("SELECT * FROM gs_user_tenant WHERE user_id = %s AND tenant_id = %s", (payload['sub'], app.config['TENANT_ID'],))
-
-      if len(row) <= 0:
-          raise AuthError({ "code": "invalid_tenant",
-                            "description":"You do not have access to this tenant." }, 403)
+    auth_header = request.headers.get('Authorization')
+    if auth_header != None and auth_header.split()[0] == 'Basic':
+      if auth_header != 'Basic ' + app.config['ACCESS_TOKEN']:
+        raise AuthError({ "code": "invalid_tenant",
+                  "description":"You do not have access to this tenant." }, 403)
       return f(*args, **kwargs)
-    raise AuthError({ "code": "invalid_header",
-                      "description": "Unable to find appropriate key" }, 401)
+    token = get_token_auth_header()
+    if token.split()[0] != 'Basic':
+      jsonurl = urlopen("https://"+AUTH0_DOMAIN+"/.well-known/jwks.json")
+      jwks = json.loads(jsonurl.read())
+      unverified_header = jwt.get_unverified_header(token)
+      rsa_key = {}
+      for key in jwks["keys"]:
+        if key["kid"] == unverified_header["kid"]:
+          rsa_key = {
+            "kty": key["kty"],
+            "kid": key["kid"],
+            "use": key["use"],
+            "n": key["n"],
+            "e": key["e"]
+          }
+      if rsa_key:
+        try:
+          payload = jwt.decode(
+            token,
+            rsa_key,
+            algorithms=ALGORITHMS,
+            audience=AUTH0_AUDIENCE,
+            issuer="https://"+AUTH0_DOMAIN+"/"
+          )
+        except jwt.ExpiredSignatureError:
+            raise AuthError({ "code": "token_expired",
+                              "description": "token is expired" }, 401)
+        except jwt.JWTClaimsError:
+            raise AuthError({ "code": "invalid_claims",
+                              "description":"incorrect claims, please check the audience and issuer" }, 401)
+        except Exception:
+            raise AuthError({ "code": "invalid_header",
+                              "description":"Unable to parse authentication token." }, 401)
+
+        _request_ctx_stack.top.current_user = payload
+        row = gsprod.fetchall("SELECT * FROM gs_user_tenant WHERE user_id = %s AND tenant_id = %s", (payload['sub'], app.config['TENANT_ID'],))
+
+        if len(row) <= 0:
+            raise AuthError({ "code": "invalid_tenant",
+                              "description":"You do not have access to this tenant." }, 403)
+        return f(*args, **kwargs)
+      raise AuthError({ "code": "invalid_header",
+                        "description": "Unable to find appropriate key" }, 401)
   return decorated
 
 def requires_token(f):
@@ -133,6 +140,17 @@ def requires_permission(*expected_args):
   def decorator(func):
     @wraps(func)
     def permissionsrequired(*args, **kwargs):
+      auth_header = request.headers.get('Authorization')
+      if auth_header != None and auth_header.split()[0] == 'Basic':
+        if auth_header != 'Basic ' + app.config['ACCESS_TOKEN']:
+          return gs_make_response(message='Forbidden',
+                          status=GStatusCode.ERROR,
+                          httpstatus=403)
+        permissions = ['ViewFranchises', 'ViewStores']
+        for expected_arg in expected_args:
+          if expected_arg in permissions:
+            return func(*args, **kwargs)
+
       user_id = get_user_id()
       if user_id != None:
         permissions = []  

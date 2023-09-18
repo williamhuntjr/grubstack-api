@@ -1,7 +1,7 @@
 import logging, json
 from math import ceil
 from flask import Blueprint, url_for, request
-from grubstack import app, config, gsdb
+from grubstack import app, config, gsdb, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
@@ -47,6 +47,14 @@ def create():
       params = data['params']
 
       name, address1, city, state, postal, store_type, thumbnail_url, phone_number = formatParams(params)
+
+      # Check if has open slots
+      rows = gsdb.fetchall("SELECT * FROM gs_store")
+      limit = gsprod.fetchone("SELECT store_count FROM gs_tenant_features WHERE tenant_id = %s", (app.config['TENANT_ID'],))
+      if len(rows) >= limit[0]:
+        return gs_make_response(message='Unable to create store. You are out of slots',
+                        status=GStatusCode.ERROR,
+                        httpstatus=401)
 
       if name:
         # Check if exists
