@@ -47,7 +47,7 @@ def create():
       data = json.loads(request.data)
       params = data['params']
 
-      name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price = formatParams(params)
+      name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price = formatParams(params)
       
       if name:
         # Check if exists
@@ -59,10 +59,10 @@ def create():
                                   httpstatus=400)
         else:
           qry = gsdb.execute("""INSERT INTO gs_ingredient
-                                (tenant_id, ingredient_id, name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price)
+                                (tenant_id, ingredient_id, name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price)
                                 VALUES
-                                (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
-                            """, (app.config["TENANT_ID"], name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price,))
+                                (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                            """, (app.config["TENANT_ID"], name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price,))
           row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('ingredient.get', ingredient_id=row['ingredient_id'])}
@@ -145,9 +145,9 @@ def update():
       data = json.loads(request.data)
       params = data['params']
       ingredient_id = params['id']
-      name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price = formatParams(params)
+      name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price = formatParams(params)
 
-      if ingredient_id and name and description and thumbnail_url and calories is not None and fat is not None and saturated_fat is not None and trans_fat is not None and cholesterol is not None and sodium is not None and carbs is not None and protein is not None and sugar is not None and fiber is not None and price is not None:
+      if ingredient_id and name != None:
         # Check if exists
         row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
 
@@ -156,7 +156,7 @@ def update():
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          qry = gsdb.execute("UPDATE gs_ingredient SET (name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price) = (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) WHERE ingredient_id = %s", (name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price, ingredient_id,))
+          qry = gsdb.execute("UPDATE gs_ingredient SET (name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price) = (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) WHERE ingredient_id = %s", (name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price, ingredient_id,))
           headers = {'Location': url_for('ingredient.get', ingredient_id=ingredient_id)}
           return gs_make_response(message=f'Ingredient {name} successfully updated',
                     httpstatus=201,

@@ -46,7 +46,7 @@ def create():
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      name, description, thumbnail_url = formatParams(params)
+      name, description, thumbnail_url, label_color = formatParams(params)
 
       if name:
         # Check if exists
@@ -58,9 +58,9 @@ def create():
                                   httpstatus=400)
         else:
           qry = gsdb.execute("""INSERT INTO gs_menu 
-                                (tenant_id, menu_id, name, description, thumbnail_url)
+                                (tenant_id, menu_id, name, description, thumbnail_url, label_color)
                                 VALUES
-                                (%s, DEFAULT, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url,))
+                                (%s, DEFAULT, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url, label_color,))
           row = gsdb.fetchone("SELECT * FROM gs_menu WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('menu.get', menu_id=row['menu_id'])}
@@ -79,19 +79,30 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/<string:menu_id>', methods=['GET'])
+@menu.route('/menu/<string:menuId>', methods=['GET'])
 @requires_auth
 @requires_permission("ViewMenus")
-def get(menu_id: int):
+def get(menuId: int):
   try:
-    json_data = {}
-    if request.json:
-      data = json.loads(request.data)
-
-      # Check if exists
-      row = gsdb.fetchone("SELECT * FROM gs_menu WHERE menu_id = %s", (menu_id,))
-      if row: 
-        json_data = formatMenu(row)
+    # Check if exists
+    row = gsdb.fetchone("SELECT * FROM gs_menu WHERE menu_id = %s", (menuId,))
+    if row: 
+      items = gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
+                                FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
+                                WHERE p.menu_id = %s ORDER BY name ASC""", (menuId,))
+      items_list = []
+      for item in items:
+        items_list.append({
+          "id": item['item_id'],
+          "name": item['name'],
+          "description": item['description'],
+          "thumbnail_url": item['thumbnail_url'],
+          "label_color": item['label_color'],
+          "price": item['price'],
+          "sale_price": item['sale_price'],
+          "is_onsale": item['is_onsale']
+        })
+      json_data = formatMenu(row, items_list)
 
     return gs_make_response(data=json_data)
 
@@ -144,7 +155,7 @@ def update():
       data = json.loads(request.data)
       params = data['params']
       menu_id = params['id']
-      name, description, thumbnail_url = formatParams(params)
+      name, description, thumbnail_url, label_color = formatParams(params)
 
       if menu_id and name and description and thumbnail_url:
         # Check if exists
@@ -155,8 +166,8 @@ def update():
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          qry = gsdb.execute("UPDATE gs_menu SET (name, description, thumbnail_url) = (%s, %s, %s) WHERE menu_id = %s", (name, description, thumbnail_url, menu_id,))
-          headers = {'Location': url_for('menu.get', menu_id=menu_id)}
+          qry = gsdb.execute("UPDATE gs_menu SET (name, description, thumbnail_url, label_color) = (%s, %s, %s, %s) WHERE menu_id = %s", (name, description, thumbnail_url, label_color, menu_id,))
+          headers = {'Location': url_for('menu.get', menuId=menu_id)}
           return gs_make_response(message=f'Menu {name} successfully updated',
                     httpstatus=201,
                     headers=headers,
@@ -170,32 +181,6 @@ def update():
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Unable to update menu',
-                            status=GStatusCode.ERROR,
-                            httpstatus=500)
-
-@menu.route('/menu/<int:menuId>', methods=['GET'])
-@requires_auth
-@requires_permission("ViewMenus")
-def get_menu(menuId):
-  try:
-    json_data = {}
-    menu = gsdb.fetchone("""SELECT menu_id, name, description, thumbnail_url FROM gs_menu WHERE menu_id = %s""", (menuId,))
-    if menu:
-      json_data = {
-        "id": menu['menu_id'],
-        "name": menu['name'],
-        "description": menu['description'],
-        "thumbnail_url": menu['thumbnail_url'],
-      }
-      return gs_make_response(data=json_data)
-
-    else:
-      return gs_make_response(message='Invalid menu ID',
-                              status=GStatusCode.ERROR,
-                              httpstatus=400)
-  except Exception as e:
-    logger.exception(e)
-    return gs_make_response(message='Unable to retrieve menu. Please try again',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 

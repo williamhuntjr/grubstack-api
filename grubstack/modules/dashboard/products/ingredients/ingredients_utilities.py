@@ -29,6 +29,7 @@ def formatIngredient(ingredient: dict):
     "name": ingredient['name'],
     "description": ingredient['description'],
     "thumbnail_url": ingredient['thumbnail_url'],
+    "label_color": ingredient['label_color'],
     "calories": ingredient['calories'],
     "fat": ingredient['fat'],
     "saturated_fat": ingredient['saturated_fat'],
@@ -46,6 +47,7 @@ def formatParams(params: dict):
   name = params['name']
   description = params['description'] or ''
   thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
+  label_color = params['label_color'] or 'blue'
   calories = params['calories'] or 0.0
   fat = params['fat'] or 0.0
   saturated_fat = params['saturated_fat'] or 0.0
@@ -58,7 +60,7 @@ def formatParams(params: dict):
   fiber = params['fiber'] or 0.0
   price = params['price'] or 0.0
 
-  return (name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price)
+  return (name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price)
 
 def getIngredients(page: int = 1, limit: int = PER_PAGE):
   json_data = []

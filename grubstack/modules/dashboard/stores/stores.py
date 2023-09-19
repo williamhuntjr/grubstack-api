@@ -96,7 +96,7 @@ def get(store_id: int):
     # Check if exists
     row = gsdb.fetchone("SELECT * FROM gs_store WHERE store_id = %s", (store_id,))
     if row: 
-      menus = gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url
+      menus = gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url, label_color
                               FROM gs_menu c INNER JOIN gs_store_menu p ON p.menu_id = c.menu_id 
                               WHERE p.store_id = %s ORDER BY name ASC""", (store_id,))
       menus_list = []
@@ -108,6 +108,7 @@ def get(store_id: int):
             "name": menu['name'],
             "description": menu['description'],
             "thumbnail_url": menu['thumbnail_url'],
+            "label_color": menu['label_color'] or 'blue',
           })
 
       json_data = formatStore(row, menus_list)

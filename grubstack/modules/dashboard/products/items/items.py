@@ -5,7 +5,7 @@ from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
-from .items_utilities import formatItems, getItems, getItemIngredients, formatParams
+from .items_utilities import formatItems, getItems, getItemIngredients, formatParams, getAllItemIngredients, getAllItemVarieties
 
 item = Blueprint('item', __name__)
 logger = logging.getLogger('grubstack')
@@ -45,7 +45,7 @@ def create():
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      name, description, thumbnail_url = formatParams(params)
+      name, description, thumbnail_url, label_color = formatParams(params)
 
       if name:
         # Check if exists
@@ -57,9 +57,9 @@ def create():
                                   httpstatus=400)
         else:
           qry = gsdb.execute("""INSERT INTO gs_item
-                                (tenant_id, item_id, name, description, thumbnail_url)
+                                (tenant_id, item_id, name, description, thumbnail_url, label_color)
                                 VALUES 
-                                (%s, DEFAULT, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url,))
+                                (%s, DEFAULT, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url, label_color))
           row = gsdb.fetchone("SELECT * FROM gs_item WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('item.get', item_id=row['item_id'])}
@@ -78,32 +78,24 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@item.route('/item/<string:item_id>', methods=['GET'])
+@item.route('/item/<string:itemId>', methods=['GET'])
 @requires_auth
 @requires_permission("ViewItems")
-def get(item_id: int):
+def get(itemId: int):
   try:
     json_data = {}
-    if request.json:
-      data = json.loads(request.data)
 
-      # Check if exists
-      row = gsdb.fetchone("SELECT * FROM gs_item WHERE item_id = %s", (item_id,))
-      if row: 
-        varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url
-                            FROM gs_variety c INNER JOIN gs_item_variety p ON p.variety_id = c.variety_id 
-                            WHERE p.item_id = %s ORDER BY name ASC""", (row['item_id'],))
+    # Check if exists
+    row = gsdb.fetchone("SELECT * FROM gs_item WHERE item_id = %s", (itemId,))
+    if row: 
+      ingredients_list = getAllItemIngredients(itemId)
+      varieties_list = getAllItemVarieties(itemId)
 
-        varieties_list = []
-        for variety in varieties:
-          varieties_list.append({
-            "id": variety['variety_id'],
-            "name": variety['name'],
-            "description": variety['description'],
-            "thumbnail_url": variety['thumbnail_url'],
-          })
-
-        json_data = formatItems(row, varieties_list)
+      json_data = formatItems(row, ingredients_list, varieties_list)
+    else:
+      return gs_make_response(message='Invalid item ID',
+                              status=GStatusCode.ERROR,
+                              httpstatus=400)
 
     return gs_make_response(data=json_data)
 
@@ -156,7 +148,7 @@ def update():
       data = json.loads(request.data)
       params = data['params']
       item_id = params['id']
-      name, description, thumbnail_url = formatParams(params)
+      name, description, thumbnail_url, label_color = formatParams(params)
 
       if item_id and name and description and thumbnail_url:
         # Check if exists
@@ -167,7 +159,7 @@ def update():
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          qry = gsdb.execute("UPDATE gs_item SET (name, description, thumbnail_url) = (%s, %s, %s) WHERE item_id = %s", (name, description, thumbnail_url, item_id,))
+          qry = gsdb.execute("UPDATE gs_item SET (name, description, thumbnail_url, label_color) = (%s, %s, %s, %s) WHERE item_id = %s", (name, description, thumbnail_url, label_color, item_id,))
           headers = {'Location': url_for('item.get', item_id=item_id)}
           return gs_make_response(message=f'Item {name} successfully updated',
                     httpstatus=201,
@@ -182,32 +174,6 @@ def update():
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Unable to update item',
-                            status=GStatusCode.ERROR,
-                            httpstatus=500)
-
-@item.route('/item/<int:itemId>', methods=['GET'])
-@requires_auth
-@requires_permission("ViewItems")
-def get_item(itemId):
-  try:
-    json_data = {}
-    item = gsdb.fetchone("""SELECT item_id, name, description, thumbnail_url FROM gs_item WHERE item_id = %s""", (itemId,))
-    if item:
-      json_data = {
-        "id": item['item_id'],
-        "name": item['name'],
-        "description": item['description'],
-        "thumbnail_url": item['thumbnail_url'],
-      }
-      return gs_make_response(data=json_data)
-
-    else:
-      return gs_make_response(message='Invalid item ID',
-                              status=GStatusCode.ERROR,
-                              httpstatus=400)
-  except Exception as e:
-    logger.exception(e)
-    return gs_make_response(message='Unable to retrieve item. Please try again',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
@@ -357,20 +323,9 @@ def delete_ingredient():
 @requires_permission("ViewItems")
 def get_all_varieties(itemId):
   try:
-    json_data = []
-    varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url
-                                    FROM gs_variety c INNER JOIN gs_item_variety p ON p.variety_id = c.variety_id 
-                                    WHERE p.item_id = %s ORDER BY name ASC""", (itemId,))
+    varieties_list = getAllItemVarieties(itemId)
 
-    for variety in varieties:
-      json_data.append({
-        "id": variety['variety_id'],
-        "name": variety['name'],
-        "description": variety['description'],
-        "thumbnail_url": variety['thumbnail_url'],
-      })
-
-    return gs_make_response(data=json_data)
+    return gs_make_response(data=varieties_list)
 
   except Exception as e:
     logger.exception(e)
