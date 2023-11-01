@@ -1,5 +1,6 @@
 from grubstack import app, gsdb
 from math import ceil
+from ..products.menus.menus_utilities import formatMenu
 
 PER_PAGE = app.config['PER_PAGE']
 
@@ -35,18 +36,28 @@ def getStores(page: int = 1, limit: int = PER_PAGE):
   
   stores_list = []
   for store in stores:
-    menus = gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url
+    menus = gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url, label_color
                               FROM gs_menu c INNER JOIN gs_store_menu p ON p.menu_id = c.menu_id 
                               WHERE p.store_id = %s ORDER BY name ASC""", (store['store_id'],))
     menus_list = []
     if menus != None:
       for menu in menus:
-        menus_list.append({
-          "id": menu['menu_id'],
-          "name": menu['name'],
-          "description": menu['description'],
-          "thumbnail_url": menu['thumbnail_url'],
-        })
+        items = gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
+                      FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
+                      WHERE p.menu_id = %s ORDER BY name ASC""", (menu['menu_id'],))
+        items_list = []
+        for item in items:
+          items_list.append({
+            "id": item['item_id'],
+            "name": item['name'],
+            "description": item['description'],
+            "thumbnail_url": item['thumbnail_url'],
+            "label_color": item['label_color'],
+            "price": item['price'],
+            "sale_price": item['sale_price'],
+            "is_onsale": item['is_onsale']
+          })
+        menus_list.append(formatMenu(menu, items_list))
 
     stores_list.append(formatStore(store, menus_list))
 

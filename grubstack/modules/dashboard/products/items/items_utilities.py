@@ -23,7 +23,7 @@ def formatParams(params: dict):
   return (name, description, thumbnail_url, label_color)
 
 def getAllItemIngredients(itemId):
-  ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber, is_optional, is_addon, is_extra
+  ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber, price, is_optional, is_addon, is_extra
                                 FROM gs_ingredient c INNER JOIN gs_item_ingredient p ON p.ingredient_id = c.ingredient_id 
                                 WHERE p.item_id = %s ORDER BY name ASC""", (itemId,))
   ingredients_list = []
@@ -44,6 +44,7 @@ def getAllItemIngredients(itemId):
       "protein": ingredient['protein'],
       "sugar": ingredient['sugar'],
       "fiber": ingredient['fiber'],
+      "price": ingredient['price'],
       "is_optional": ingredient['is_optional'],
       "is_addon": ingredient['is_addon'],
       "is_extra": ingredient['is_extra'],

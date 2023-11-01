@@ -6,6 +6,7 @@ from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
 from .stores_utilities import formatStore, getStores, formatParams
+from ..products.menus.menus_utilities import formatMenu
 
 store = Blueprint('store', __name__)
 logger = logging.getLogger('grubstack')
@@ -103,13 +104,23 @@ def get(store_id: int):
 
       if menus != None:
         for menu in menus:
-          menus_list.append({
-            "id": menu['menu_id'],
-            "name": menu['name'],
-            "description": menu['description'],
-            "thumbnail_url": menu['thumbnail_url'],
-            "label_color": menu['label_color'] or 'blue',
-          })
+          items = gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
+                      FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
+                      WHERE p.menu_id = %s ORDER BY name ASC""", (menu['menu_id'],))
+          items_list = []
+          for item in items:
+            items_list.append({
+              "id": item['item_id'],
+              "name": item['name'],
+              "description": item['description'],
+              "thumbnail_url": item['thumbnail_url'],
+              "thumbnail_url": item['thumbnail_url'],
+              "label_color": item['label_color'],
+              "price": item['price'],
+              "sale_price": item['sale_price'],
+              "is_onsale": item['is_onsale']
+            })
+          menus_list.append(formatMenu(menu, items_list))
 
       json_data = formatStore(row, menus_list)
 

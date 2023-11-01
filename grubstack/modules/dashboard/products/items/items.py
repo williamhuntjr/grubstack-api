@@ -62,7 +62,7 @@ def create():
                                 (%s, DEFAULT, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url, label_color))
           row = gsdb.fetchone("SELECT * FROM gs_item WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
-            headers = {'Location': url_for('item.get', item_id=row['item_id'])}
+            headers = {'Location': url_for('item.get', itemId=row['item_id'])}
             return gs_make_response(message=f'Item {name} successfully created',
                                 httpstatus=201,
                                 headers=headers,
@@ -160,7 +160,7 @@ def update():
                                   httpstatus=404)
         else:
           qry = gsdb.execute("UPDATE gs_item SET (name, description, thumbnail_url, label_color) = (%s, %s, %s, %s) WHERE item_id = %s", (name, description, thumbnail_url, label_color, item_id,))
-          headers = {'Location': url_for('item.get', item_id=item_id)}
+          headers = {'Location': url_for('item.get', itemId=item_id)}
           return gs_make_response(message=f'Item {name} successfully updated',
                     httpstatus=201,
                     headers=headers,

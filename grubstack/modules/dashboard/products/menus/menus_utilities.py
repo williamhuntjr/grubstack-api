@@ -37,7 +37,6 @@ def getMenus(page: int = 1, limit: int = PER_PAGE):
         "name": item['name'],
         "description": item['description'],
         "thumbnail_url": item['thumbnail_url'],
-        "thumbnail_url": item['thumbnail_url'],
         "label_color": item['label_color'],
         "price": item['price'],
         "sale_price": item['sale_price'],
