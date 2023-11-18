@@ -6,6 +6,7 @@ from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import AuthError, requires_auth, requires_permission
 from .menus_utilities import formatMenu, getMenus, formatParams, getMenuItems
+from ..items.items_utilities import getAllItemVarieties
 
 menu = Blueprint('menu', __name__)
 logger = logging.getLogger('grubstack')
@@ -82,7 +83,7 @@ def create():
 @menu.route('/menu/<string:menuId>', methods=['GET'])
 @requires_auth
 @requires_permission("ViewMenus")
-def get(menuId: int):
+def get(menuId: int, showVarieties: bool = False):
   try:
     # Check if exists
     row = gsdb.fetchone("SELECT * FROM gs_menu WHERE menu_id = %s", (menuId,))
@@ -91,7 +92,8 @@ def get(menuId: int):
                                 FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
                                 WHERE p.menu_id = %s ORDER BY name ASC""", (menuId,))
       items_list = []
-      for item in items:
+      for item in items: 
+        varieties = getAllItemVarieties(item['item_id'])
         items_list.append({
           "id": item['item_id'],
           "name": item['name'],
@@ -100,7 +102,8 @@ def get(menuId: int):
           "label_color": item['label_color'],
           "price": item['price'],
           "sale_price": item['sale_price'],
-          "is_onsale": item['is_onsale']
+          "is_onsale": item['is_onsale'],
+          "varieties": varieties
         })
       json_data = formatMenu(row, items_list)
 
