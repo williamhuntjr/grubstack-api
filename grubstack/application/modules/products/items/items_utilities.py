@@ -3,7 +3,7 @@ from math import ceil
 
 PER_PAGE = app.config['PER_PAGE']
 
-def formatItems(item: dict, ingredients_list, varieties_list: list):
+def formatItem(item: dict, ingredients_list = [], varieties_list: list = []):
   return {
     "id": item['item_id'],
     "name": item['name'],
@@ -75,7 +75,7 @@ def getItems(page: int = 1, limit: int = PER_PAGE):
     ingredients_list = getAllItemIngredients(item['item_id'])
     varieties_list = getAllItemVarieties(item['item_id'])
 
-    items_list.append(formatItems(item, ingredients_list, varieties_list))
+    items_list.append(formatItem(item, ingredients_list, varieties_list))
 
   # Calculate paged data
   offset = page - 1

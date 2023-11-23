@@ -5,13 +5,14 @@ from grubstack import app, config, gsdb, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
-from .stores_utilities import formatStore, getStores, formatParams
+from .stores_utilities import formatStore, getStores, formatParams, getStore
 from ..products.menus.menus_utilities import formatMenu
 
 store = Blueprint('store', __name__)
 logger = logging.getLogger('grubstack')
 
 PER_PAGE = app.config['PER_PAGE']
+STORE_FILTERS = ['showMenus', 'showItems']
 
 @store.route('/stores', methods=['GET'])
 @requires_auth
@@ -22,12 +23,19 @@ def get_all():
     page = request.args.get('page')
     limit = request.args.get('limit')
 
+    filters = {}
+
+    for store_filter in STORE_FILTERS:
+      if request.args.get(store_filter):
+        filters[store_filter] = request.args.get(store_filter)
+
     if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
-    json_data, total_rows, total_pages = getStores(page, limit)
+
+    json_data, total_rows, total_pages = getStores(page, limit, filters)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -93,38 +101,21 @@ def create():
 @requires_permission("ViewStores")
 def get(store_id: int):
   try:
-    json_data = {}
-    # Check if exists
-    row = gsdb.fetchone("SELECT * FROM gs_store WHERE store_id = %s", (store_id,))
-    if row: 
-      menus = gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url, label_color
-                              FROM gs_menu c INNER JOIN gs_store_menu p ON p.menu_id = c.menu_id 
-                              WHERE p.store_id = %s ORDER BY name ASC""", (store_id,))
-      menus_list = []
+    filters = {}
 
-      if menus != None:
-        for menu in menus:
-          items = gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
-                      FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
-                      WHERE p.menu_id = %s ORDER BY name ASC""", (menu['menu_id'],))
-          items_list = []
-          for item in items:
-            items_list.append({
-              "id": item['item_id'],
-              "name": item['name'],
-              "description": item['description'],
-              "thumbnail_url": item['thumbnail_url'],
-              "thumbnail_url": item['thumbnail_url'],
-              "label_color": item['label_color'],
-              "price": item['price'],
-              "sale_price": item['sale_price'],
-              "is_onsale": item['is_onsale']
-            })
-          menus_list.append(formatMenu(menu, items_list))
+    for store_filter in STORE_FILTERS:
+      if request.args.get(store_filter):
+        filters[store_filter] = request.args.get(store_filter)
 
-      json_data = formatStore(row, menus_list)
+    store = getStore(store_id, filters)
 
-    return gs_make_response(data=json_data)
+    if store:
+      return gs_make_response(data=store)
+
+    else:
+      return gs_make_response(message='Store not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
 
   except Exception as e:
     logger.exception(e)
@@ -144,8 +135,8 @@ def delete():
       store_id = params['store_id']
       if store_id:
         # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_store WHERE store_id = %s", (store_id,))
-        if row is None:
+        store = getStore(store_id)
+        if store is None:
           return gs_make_response(message='Invalid store',
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
@@ -217,7 +208,7 @@ def get_all_menus(storeId):
     if page is None: page = 1
     else: page = int(page)
 
-    json_data, total_rows, total_pages = getStoreMenus(storeId, page, limit)
+    json_data, total_rows, total_pages = getStoreMenusPaginated(storeId, page, limit)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -241,7 +232,7 @@ def add_menu():
 
       if store_id is not None and menu_id is not None:
         # Check if exists
-        store = gsdb.fetchone("SELECT * FROM gs_store WHERE store_id = %s", (store_id,))
+        store = getStore(store_id)
         menu = gsdb.fetchone("SELECT * FROM gs_menu WHERE menu_id = %s", (menu_id,))
         is_existing = gsdb.fetchone("SELECT * FROM gs_store_menu WHERE store_id = %s AND menu_id = %s", (store_id, menu_id,))
         if store is None or menu is None:

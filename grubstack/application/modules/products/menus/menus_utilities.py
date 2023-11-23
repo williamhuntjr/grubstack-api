@@ -3,7 +3,7 @@ from math import ceil
 
 PER_PAGE = app.config['PER_PAGE']
 
-def formatMenu(menu: dict, items_list: list):
+def formatMenu(menu: dict, items_list: list, filters: list = []):
   return {
     "id": menu['menu_id'],
     "name": menu['name'],

@@ -125,7 +125,6 @@ def delete_file():
         else:
           full_path = os.path.join(UPLOAD_FOLDER, row['file_name'])
           if full_path != '/':
-            print("deleting " + full_path)
             os.remove(full_path)
           qry = gsdb.execute("DELETE FROM gs_media_library WHERE file_id = %s", (file_id,))
           return gs_make_response(message=f'File #{file_id} deleted')

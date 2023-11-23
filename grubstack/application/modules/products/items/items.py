@@ -5,7 +5,7 @@ from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
-from .items_utilities import formatItems, getItems, getItemIngredients, formatParams, getAllItemIngredients, getAllItemVarieties
+from .items_utilities import formatItem, getItems, getItemIngredients, formatParams, getAllItemIngredients, getAllItemVarieties
 
 item = Blueprint('item', __name__)
 logger = logging.getLogger('grubstack')
@@ -91,7 +91,7 @@ def get(itemId: int):
       ingredients_list = getAllItemIngredients(itemId)
       varieties_list = getAllItemVarieties(itemId)
 
-      json_data = formatItems(row, ingredients_list, varieties_list)
+      json_data = formatItem(row, ingredients_list, varieties_list)
     else:
       return gs_make_response(message='Invalid item ID',
                               status=GStatusCode.ERROR,

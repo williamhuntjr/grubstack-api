@@ -5,12 +5,14 @@ from grubstack import app, config, gsdb, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
-from .franchises_utilities import formatFranchise, getFranchises, formatParams
+from .franchises_utilities import formatFranchise, getFranchises, formatParams, getFranchise, getFranchiseStoresPaginated
+from ..stores.stores_utilities import formatStore
 
 franchise = Blueprint('franchise', __name__)
 logger = logging.getLogger('grubstack')
 
 PER_PAGE = app.config['PER_PAGE']
+FRANCHISE_FILTERS = ['showStores', 'showMenus']
 
 @franchise.route('/franchises', methods=['GET'])
 @requires_auth
@@ -21,12 +23,19 @@ def get_all():
     page = request.args.get('page')
     limit = request.args.get('limit')
 
+    filters = {}
+
+    for franchise_filter in FRANCHISE_FILTERS:
+      if request.args.get(franchise_filter):
+        filters[franchise_filter] = request.args.get(franchise_filter)
+
     if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
-    json_data, total_rows, total_pages = getFranchises(page, limit)
+
+    json_data, total_rows, total_pages = getFranchises(page, limit, filters)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -42,6 +51,7 @@ def get_all():
 def create():
   try:
     json_data = {}
+
     if request.json:
       data = json.loads(request.data)
       params = data['params']
@@ -92,31 +102,21 @@ def create():
 @requires_permission("ViewFranchises")
 def get(franchise_id: int):
   try:
-    json_data = {}
-    # Check if exists
-    row = gsdb.fetchone("SELECT * FROM gs_franchise WHERE franchise_id = %s", (franchise_id,))
-    if row:
-      stores = gsdb.fetchall("""SELECT c.store_id, name, address1, city, state, postal, store_type, thumbnail_url, phone_number
-                                FROM gs_store c INNER JOIN gs_franchise_store p ON p.store_id = c.store_id 
-                                WHERE p.franchise_id = %s ORDER BY name ASC""", (franchise_id,))
-      stores_list = []
-      if stores != None:
-        for store in stores:
-          stores_list.append({
-            "id": store['store_id'],
-            "name": store['name'],
-            "address1": store['address1'],
-            "city": store['city'],
-            "state": store['state'],
-            "postal": store['postal'],
-            "store_type": store['store_type'],
-            "thumbnail_url": store['thumbnail_url'],
-            "phone_number": store['phone_number'],
-          })
-      json_data = formatFranchise(row, stores_list)
+    filters = {}
 
-    return gs_make_response(data=json_data)
+    for franchise_filter in FRANCHISE_FILTERS:
+      if request.args.get(franchise_filter):
+        filters[franchise_filter] = request.args.get(franchise_filter)
 
+    franchise = getFranchise(franchise_id, filters)
+
+    if franchise:
+      return gs_make_response(data=franchise)
+
+    else:
+      return gs_make_response(message='Franchise not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
@@ -135,8 +135,8 @@ def delete():
       franchise_id = params['franchise_id']
       if franchise_id:
         # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_franchise WHERE franchise_id = %s", (franchise_id,))
-        if row is None:
+        franchise = getFranchise(franchise_id)
+        if franchise is None:
           return gs_make_response(message='Invalid franchise',
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
@@ -208,7 +208,7 @@ def get_all_stores(franchiseId):
     if page is None: page = 1
     else: page = int(page)
 
-    json_data, total_rows, total_pages = getFranchiseStores(franchiseId, page, limit)
+    json_data, total_rows, total_pages = getFranchiseStoresPaginated(franchiseId, page, limit)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
