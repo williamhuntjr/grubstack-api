@@ -1,4 +1,5 @@
 from math import ceil
+from pypika import Query, Table, Order
 
 from grubstack import app, gsdb
 from grubstack.application.modules.stores.stores_utilities import formatStore
@@ -28,8 +29,11 @@ def formatParams(params: dict):
 
 def getFranchise(franchise_id: int, filters: list = []):
   json_data = []
-  franchise = gsdb.fetchone("SELECT * FROM gs_franchise WHERE franchise_id = %s", (franchise_id,))
   stores_list = []
+
+  table = Table('gs_franchise')
+  qry = Query.from_('gs_franchise').select('*').where(table.franchise_id == franchise_id)
+  franchise = gsdb.fetchone(str(qry))
 
   if 'showStores' in filters and filters['showStores']:
     stores = getFranchiseStores(franchise_id)
@@ -50,9 +54,11 @@ def getFranchise(franchise_id: int, filters: list = []):
 
 def getFranchises(page: int = 1, limit: int = PER_PAGE, filters: list = []):
   json_data = []
-  franchises = gsdb.fetchall("SELECT * FROM gs_franchise ORDER BY name ASC")
-  
   franchises_list = []
+
+  qry = Query.from_('gs_franchise').select('*').orderby('name', order=Order.asc)
+  franchises = gsdb.fetchall(str(qry))
+
   for franchise in franchises:
     stores_list = []
 
@@ -65,6 +71,7 @@ def getFranchises(page: int = 1, limit: int = PER_PAGE, filters: list = []):
 
           if 'showMenus' in filters and filters['showMenus']:
             menus = getStoreMenus(store['store_id'])
+
             for menu in menus:
               menus_list.append(formatMenu(menu, []))
 

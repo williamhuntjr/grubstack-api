@@ -8,7 +8,7 @@ from grubstack.authentication import requires_auth, requires_permission
 from grubstack.application.modules.stores.stores_utilities import formatStore
 from grubstack.application.utilities.filters import generateFilters
 from grubstack.application.utilities.database import deleteFranchise
-from .franchises_utilities import formatFranchise, getFranchises, formatParams, getFranchise, getFranchiseStoresPaginated
+from .franchises_utilities import getFranchises, formatParams, getFranchise, getFranchiseStoresPaginated
 
 franchise = Blueprint('franchise', __name__)
 logger = logging.getLogger('grubstack')
