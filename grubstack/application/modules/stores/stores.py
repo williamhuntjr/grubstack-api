@@ -54,7 +54,7 @@ def create():
       name, address1, city, state, postal, store_type, thumbnail_url, phone_number = formatParams(params)
 
       # Check if has open slots
-      row = gsdb.fetchall("SELECT COUNT(*) FROM gs_store")
+      row = gsdb.fetchone("SELECT COUNT(*) FROM gs_store")
       limit = gsprod.fetchone("SELECT store_count FROM gs_tenant_features WHERE tenant_id = %s", (app.config['TENANT_ID'],))
       if row[0] >= limit[0]:
         return gs_make_response(message='Unable to create store. You are out of slots',
