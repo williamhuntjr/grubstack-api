@@ -32,7 +32,7 @@ def getFranchise(franchise_id: int, filters: list = []):
   stores_list = []
 
   if 'showStores' in filters and filters['showStores']:
-    stores = getStores(franchise_id)
+    stores = getFranchiseStores(franchise_id)
 
     if stores != None:
       for store in stores:

@@ -5,8 +5,10 @@ from grubstack import app, config, gsdb, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
+from grubstack.application.modules.stores.stores_utilities import formatStore
+from grubstack.application.utilities.filters import generateFilters
+from grubstack.application.utilities.database import deleteFranchise
 from .franchises_utilities import formatFranchise, getFranchises, formatParams, getFranchise, getFranchiseStoresPaginated
-from ..stores.stores_utilities import formatStore
 
 franchise = Blueprint('franchise', __name__)
 logger = logging.getLogger('grubstack')
@@ -23,19 +25,13 @@ def get_all():
     page = request.args.get('page')
     limit = request.args.get('limit')
 
-    filters = {}
-
-    for franchise_filter in FRANCHISE_FILTERS:
-      if request.args.get(franchise_filter):
-        filters[franchise_filter] = request.args.get(franchise_filter)
-
     if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
 
-    json_data, total_rows, total_pages = getFranchises(page, limit, filters)
+    json_data, total_rows, total_pages = getFranchises(page, limit, generateFilters(FRANCHISE_FILTERS, request.args))
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -59,9 +55,9 @@ def create():
       name, description, thumbnail_url = formatParams(params)
 
       # Check if has open slots
-      rows = gsdb.fetchall("SELECT * FROM gs_franchise")
+      row = gsdb.fetchone("SELECT COUNT(*) FROM gs_franchise")
       limit = gsprod.fetchone("SELECT franchise_count FROM gs_tenant_features WHERE tenant_id = %s", (app.config['TENANT_ID'],))
-      if len(rows) >= limit[0]:
+      if row[0] >= limit[0]:
         return gs_make_response(message='Unable to create franchise. You are out of slots',
                         status=GStatusCode.ERROR,
                         httpstatus=401)
@@ -102,14 +98,11 @@ def create():
 @requires_permission("ViewFranchises")
 def get(franchise_id: int):
   try:
-    filters = {}
-
-    for franchise_filter in FRANCHISE_FILTERS:
-      if request.args.get(franchise_filter):
-        filters[franchise_filter] = request.args.get(franchise_filter)
-
+    filters = {
+      "showStores": True,
+      "showMenus": True
+    }
     franchise = getFranchise(franchise_id, filters)
-
     if franchise:
       return gs_make_response(data=franchise)
 
@@ -137,11 +130,11 @@ def delete():
         # Check if exists
         franchise = getFranchise(franchise_id)
         if franchise is None:
-          return gs_make_response(message='Invalid franchise',
+          return gs_make_response(message='Franchise not found',
                                   status=GStatusCode.ERROR,
-                                  httpstatus=400)
+                                  httpstatus=404)
         else:
-          qry = gsdb.execute("DELETE FROM gs_franchise WHERE franchise_id = %s", (franchise_id,))
+          deleteFranchise(franchise_id)
           return gs_make_response(message=f'Franchise #{franchise_id} deleted')
           
       else:
@@ -168,9 +161,9 @@ def update():
 
       if franchise_id and name:
         # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_franchise WHERE franchise_id = %s", (franchise_id,))
+        franchise = getFranchise(franchise_id)
 
-        if row is None:
+        if franchise is None:
           return gs_make_response(message=f'Franchise {name} does not exist',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
@@ -232,7 +225,7 @@ def add_store():
 
       if franchise_id is not None and store_id is not None:
         # Check if exists
-        franchise = gsdb.fetchone("SELECT * FROM gs_franchise WHERE franchise_id = %s", (franchise_id,))
+        franchise = getFranchise(franchise_id)
         store = gsdb.fetchone("SELECT * FROM gs_store WHERE store_id = %s", (store_id,))
         is_existing = gsdb.fetchone("SELECT * FROM gs_franchise_store WHERE franchise_id = %s AND store_id = %s", (franchise_id, store_id,))
         if franchise is None or store is None:

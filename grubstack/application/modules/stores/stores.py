@@ -5,8 +5,10 @@ from grubstack import app, config, gsdb, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
+from grubstack.application.utilities.database import deleteStore
+from grubstack.application.utilities.filters import generateFilters
+from grubstack.application.modules.products.menus.menus_utilities import formatMenu
 from .stores_utilities import formatStore, getStores, formatParams, getStore
-from ..products.menus.menus_utilities import formatMenu
 
 store = Blueprint('store', __name__)
 logger = logging.getLogger('grubstack')
@@ -23,19 +25,13 @@ def get_all():
     page = request.args.get('page')
     limit = request.args.get('limit')
 
-    filters = {}
-
-    for store_filter in STORE_FILTERS:
-      if request.args.get(store_filter):
-        filters[store_filter] = request.args.get(store_filter)
-
     if limit is None: limit = PER_PAGE
     else: limit = int(limit)
 
     if page is None: page = 1
     else: page = int(page)
 
-    json_data, total_rows, total_pages = getStores(page, limit, filters)
+    json_data, total_rows, total_pages = getStores(page, limit, generateFilters(STORE_FILTERS, request.args))
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -58,9 +54,9 @@ def create():
       name, address1, city, state, postal, store_type, thumbnail_url, phone_number = formatParams(params)
 
       # Check if has open slots
-      rows = gsdb.fetchall("SELECT * FROM gs_store")
+      row = gsdb.fetchall("SELECT COUNT(*) FROM gs_store")
       limit = gsprod.fetchone("SELECT store_count FROM gs_tenant_features WHERE tenant_id = %s", (app.config['TENANT_ID'],))
-      if len(rows) >= limit[0]:
+      if row[0] >= limit[0]:
         return gs_make_response(message='Unable to create store. You are out of slots',
                         status=GStatusCode.ERROR,
                         httpstatus=401)
@@ -101,14 +97,12 @@ def create():
 @requires_permission("ViewStores")
 def get(store_id: int):
   try:
-    filters = {}
-
-    for store_filter in STORE_FILTERS:
-      if request.args.get(store_filter):
-        filters[store_filter] = request.args.get(store_filter)
-
+    filters = {
+      "showMenus": True,
+      "showItems": True
+    }
     store = getStore(store_id, filters)
-
+    
     if store:
       return gs_make_response(data=store)
 
@@ -133,15 +127,17 @@ def delete():
       data = json.loads(request.data)
       params = data['params']
       store_id = params['store_id']
+
       if store_id:
         # Check if exists
         store = getStore(store_id)
+
         if store is None:
-          return gs_make_response(message='Invalid store',
+          return gs_make_response(message='Store not found',
                                   status=GStatusCode.ERROR,
-                                  httpstatus=400)
+                                  httpstatus=404)
         else:
-          qry = gsdb.execute("DELETE FROM gs_store WHERE store_id = %s", (store_id,))
+          qry = deleteStore(store_id)
           return gs_make_response(message=f'Store #{store_id} deleted')
           
       else:
@@ -168,7 +164,7 @@ def update():
 
       if store_id and name:
         # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_store WHERE store_id = %s", (store_id,))
+        row = getStore(store_id)
 
         if row is None:
           return gs_make_response(message=f'Store {name} does not exist',
