@@ -1,14 +1,5 @@
 from grubstack import gsdb
 
-# Franchises
-def getFranchiseStores(franchise_id: int):
-   return gsdb.fetchall("""SELECT c.store_id, name, address1, city, state, postal, store_type, thumbnail_url, phone_number
-                            FROM gs_store c INNER JOIN gs_franchise_store p ON p.store_id = c.store_id 
-                            WHERE p.franchise_id = %s ORDER BY name ASC""", (franchise_id,))
-
-def deleteFranchise(franchise_id: int):
-  return gsdb.execute("DELETE FROM gs_franchise WHERE franchise_id = %s", (franchise_id,))
-
 # Stores
 def getStoreMenus(store_id: int):
   return gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url, label_color

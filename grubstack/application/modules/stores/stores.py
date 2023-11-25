@@ -1,37 +1,33 @@
 import logging, json
+
 from math import ceil
 from flask import Blueprint, url_for, request
+
 from grubstack import app, config, gsdb, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
-from grubstack.application.utilities.database import deleteStore
-from grubstack.application.utilities.filters import generateFilters
-from grubstack.application.modules.products.menus.menus_utilities import formatMenu
-from .stores_utilities import formatStore, getStores, formatParams, getStore
+from grubstack.application.utilities.filters import generate_filters, create_pagination_params
+from grubstack.application.modules.products.menus.menus_service import MenuService
+
+from .stores_utilities import format_store, format_params
+from .stores_constants import DEFAULT_FILTERS, STORE_FILTERS, PER_PAGE
+from .stores_service import StoreService
 
 store = Blueprint('store', __name__)
 logger = logging.getLogger('grubstack')
 
-PER_PAGE = app.config['PER_PAGE']
-STORE_FILTERS = ['showMenus', 'showItems']
+store_service = StoreService()
+menu_service = MenuService()
 
 @store.route('/stores', methods=['GET'])
 @requires_auth
 @requires_permission("ViewStores")
 def get_all():
   try:
-    # Get route parameters
-    page = request.args.get('page')
-    limit = request.args.get('limit')
+    page, limit = create_pagination_params(request.args)
 
-    if limit is None: limit = PER_PAGE
-    else: limit = int(limit)
-
-    if page is None: page = 1
-    else: page = int(page)
-
-    json_data, total_rows, total_pages = getStores(page, limit, generateFilters(STORE_FILTERS, request.args))
+    json_data, total_rows, total_pages = store_service.get_all(page, limit, generate_filters(STORE_FILTERS, request.args))
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -46,41 +42,43 @@ def get_all():
 @requires_permission("MaintainStores")
 def create():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
+      name = params['name']
+      store_type = params['store_type']
 
-      name, address1, city, state, postal, store_type, thumbnail_url, phone_number = formatParams(params)
+      count = store_service.get_store_count()
+      limit = store_service.get_store_limit()
 
-      # Check if has open slots
-      row = gsdb.fetchone("SELECT COUNT(*) FROM gs_store")
-      limit = gsprod.fetchone("SELECT store_count FROM gs_tenant_features WHERE tenant_id = %s", (app.config['TENANT_ID'],))
-      if row[0] >= limit[0]:
+      if count >= limit:
         return gs_make_response(message='Unable to create store. You are out of slots',
                         status=GStatusCode.ERROR,
                         httpstatus=401)
 
       if name:
-        # Check if exists
-        row = gsdb.fetchall("SELECT * FROM gs_store WHERE name = %s AND store_type = %s ORDER BY name ASC", (name, store_type,))
+        store = store_service.search(name, store_type)
 
-        if row is not None and len(row) > 0:
+        if store is not None:
           return gs_make_response(message='That store and store type combination already exists. Try a different name',
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
         else:
-          qry = gsdb.execute("""INSERT INTO gs_store 
-                                (tenant_id, store_id, name, address1, city, state, postal, store_type, thumbnail_url, phone_number) 
-                                VALUES 
-                                (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, address1, city, state, postal, store_type, thumbnail_url, phone_number))
-          row = gsdb.fetchone("SELECT * FROM gs_store WHERE name = %s AND store_type = %s", (name, store_type,))
-          if row is not None and len(row) > 0:
-            headers = {'Location': url_for('store.get', store_id=row['store_id'])}
+          store_service.create(format_params(params))
+          store = store_service.search(name, store_type)
+
+          if store is not None:
+            headers = {'Location': url_for('store.get', store_id=store['id'])}
             return gs_make_response(message=f'Store {name} successfully created',
                                 httpstatus=201,
                                 headers=headers,
-                                data=row)
+                                data=store)
+
+          else:
+            return gs_make_response(message='Unable to create store',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+                            
       else:
         return gs_make_response(message='Invalid data',
                                 status=GStatusCode.ERROR,
@@ -97,11 +95,7 @@ def create():
 @requires_permission("ViewStores")
 def get(store_id: int):
   try:
-    filters = {
-      "showMenus": True,
-      "showItems": True
-    }
-    store = getStore(store_id, filters)
+    store = store_service.get(store_id, DEFAULT_FILTERS)
     
     if store:
       return gs_make_response(data=store)
@@ -122,22 +116,20 @@ def get(store_id: int):
 @requires_permission("MaintainStores")
 def delete():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
       store_id = params['store_id']
 
       if store_id:
-        # Check if exists
-        store = getStore(store_id)
+        store = store_service.get(store_id)
 
         if store is None:
           return gs_make_response(message='Store not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          qry = deleteStore(store_id)
+          qry = store_service.delete(store_id)
           return gs_make_response(message=f'Store #{store_id} deleted')
           
       else:
@@ -155,23 +147,22 @@ def delete():
 @requires_permission("MaintainStores")
 def update():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
       store_id = params['id']
-      name, address1, city, state, postal, store_type, thumbnail_url, phone_number = formatParams(params)
+      name = params['name']
 
       if store_id and name:
         # Check if exists
-        row = getStore(store_id)
+        row = store_service.get(store_id)
 
         if row is None:
           return gs_make_response(message=f'Store {name} does not exist',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          qry = gsdb.execute("UPDATE gs_store SET (name, address1, city, state, postal, store_type, thumbnail_url, phone_number) = (%s, %s, %s, %s, %s, %s, %s, %s) WHERE store_id = %s", (name, address1, city, state, postal, store_type, thumbnail_url, phone_number, store_id,))
+          store_service.update(store_id, format_params(params))
           headers = {'Location': url_for('store.get', store_id=store_id)}
           return gs_make_response(message=f'Store {name} successfully updated',
                     httpstatus=201,
@@ -189,22 +180,14 @@ def update():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@store.route('/store/<int:storeId>/menus', methods=['GET'])
+@store.route('/store/<int:store_id>/menus', methods=['GET'])
 @requires_auth
 @requires_permission("MaintainStores")
-def get_all_menus(storeId):
+def get_all_menus(store_id):
   try:
-    # Get route parameters
-    page = request.args.get('page')
-    limit = request.args.get('limit')
+    page, limit = create_pagination_params(request.args)
 
-    if limit is None: limit = PER_PAGE
-    else: limit = int(limit)
-
-    if page is None: page = 1
-    else: page = int(page)
-
-    json_data, total_rows, total_pages = getStoreMenusPaginated(storeId, page, limit)
+    json_data, total_rows, total_pages = store_service.get_menus_paginated(store_id, page, limit)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -219,7 +202,6 @@ def get_all_menus(storeId):
 @requires_permission("MaintainStores")
 def add_menu():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
@@ -228,19 +210,23 @@ def add_menu():
 
       if store_id is not None and menu_id is not None:
         # Check if exists
-        store = getStore(store_id)
-        menu = gsdb.fetchone("SELECT * FROM gs_menu WHERE menu_id = %s", (menu_id,))
-        is_existing = gsdb.fetchone("SELECT * FROM gs_store_menu WHERE store_id = %s AND menu_id = %s", (store_id, menu_id,))
-        if store is None or menu is None:
-          return gs_make_response(message='Invalid store or invalid menu',
+        store = store_service.get(store_id)
+        menu = menu_service.get(menu_id)
+
+        is_existing = store_service.menu_exists(store_id, menu_id)
+        
+        if store is None:
+          return gs_make_response(message='Store does not exist',
                                   status=GStatusCode.ERROR,
-                                  httpstatus=400)
+                                  httpstatus=404)
+        if menu is None:
+          return gs_make_response(message='Menu does not exist',
+                                  status=GStatusCode.ERROR,
+                                  httpstatus=404)
         else:
           if not is_existing:
-            qry = gsdb.execute("""INSERT INTO gs_store_menu 
-                                  (tenant_id, store_id, menu_id)
-                                  VALUES 
-                                  (%s, %s, %s)""", (app.config["TENANT_ID"], store_id, menu_id,))
+            store_service.add_menu(store_id, menu_id)
+            
             return gs_make_response(message=f'Menu #{menu_id} added to store')
           else:
             return gs_make_response(message=f'Menu already exists on store',
@@ -261,7 +247,6 @@ def add_menu():
 @requires_permission("MaintainStores")
 def delete_menu():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
@@ -269,14 +254,14 @@ def delete_menu():
       menu_id = params['menu_id']
 
       if store_id and menu_id:
-        # Check if exists
-        store_menu = gsdb.fetchone("SELECT * FROM gs_store_menu WHERE store_id = %s AND menu_id = %s", (store_id, menu_id,))
-        if store_menu is None:
+        is_existing = store_service.menu_exists(store_id, menu_id)
+
+        if is_existing is None:
           return gs_make_response(message='Invalid store menu',
                                   status=GStatusCode.ERROR,
-                                  httpstatus=400)
+                                  httpstatus=404)
         else:
-          qry = gsdb.execute("DELETE FROM gs_store_menu WHERE store_id = %s AND menu_id = %s", (store_id, menu_id,))
+          store_service.delete_menu(store_id, menu_id)
           return gs_make_response(message=f'Menu #{menu_id} deleted from store')
           
       else:

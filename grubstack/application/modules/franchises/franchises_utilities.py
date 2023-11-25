@@ -1,14 +1,6 @@
-from math import ceil
-from pypika import Query, Table, Order
+from grubstack import app
 
-from grubstack import app, gsdb
-from grubstack.application.modules.stores.stores_utilities import formatStore
-from grubstack.application.modules.products.menus.menus_utilities import formatMenu
-from grubstack.application.utilities.database import getFranchiseStores, getStoreMenus
-
-PER_PAGE = app.config['PER_PAGE']
-
-def formatFranchise(franchise: dict, stores_list: list, filters: list = []):
+def format_franchise(franchise: dict, stores_list: list = [], filters: list = []):
   json_data = {
     "id": franchise['franchise_id'],
     "name": franchise['name'],
@@ -20,93 +12,9 @@ def formatFranchise(franchise: dict, stores_list: list, filters: list = []):
 
   return json_data
   
-def formatParams(params: dict):
+def format_params(params: dict):
   name = params['name']
   description = params['description'] or ''
   thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
 
   return (name, description, thumbnail_url)
-
-def getFranchise(franchise_id: int, filters: list = []):
-  json_data = []
-  stores_list = []
-
-  table = Table('gs_franchise')
-  qry = Query.from_('gs_franchise').select('*').where(table.franchise_id == franchise_id)
-  franchise = gsdb.fetchone(str(qry))
-
-  if 'showStores' in filters and filters['showStores']:
-    stores = getFranchiseStores(franchise_id)
-
-    if stores != None:
-      for store in stores:
-        menus_list = []
-
-        if 'showMenus' in filters and filters['showMenus']:
-          menus = getStoreMenus(store['store_id'])
-
-          for menu in menus:
-            menus_list.append(formatMenu(menu, []))
-            
-        stores_list.append(formatStore(store, menus_list, filters))
-      
-  return formatFranchise(franchise, stores_list, filters)
-
-def getFranchises(page: int = 1, limit: int = PER_PAGE, filters: list = []):
-  json_data = []
-  franchises_list = []
-
-  qry = Query.from_('gs_franchise').select('*').orderby('name', order=Order.asc)
-  franchises = gsdb.fetchall(str(qry))
-
-  for franchise in franchises:
-    stores_list = []
-
-    if 'showStores' in filters and filters['showStores']:
-      stores = getFranchiseStores(franchise['franchise_id'])
-
-      if stores != None:
-        for store in stores:
-          menus_list = []
-
-          if 'showMenus' in filters and filters['showMenus']:
-            menus = getStoreMenus(store['store_id'])
-
-            for menu in menus:
-              menus_list.append(formatMenu(menu, []))
-
-          stores_list.append(formatStore(store, menus_list, filters))
-
-    franchises_list.append(formatFranchise(franchise, stores_list, filters))
-
-  # Calculate paged data
-  offset = page - 1
-  start = offset * limit
-  end = start + limit
-  total_pages = ceil(len(franchises) / limit)
-  total_rows = len(franchises)
-
-  json_data = franchises_list[start:end]
-
-  return (json_data, total_rows, total_pages)
-
-def getFranchiseStoresPaginated(franchiseId, page: int = 1, limit: int = PER_PAGE):
-  json_data = []
-  stores = getFranchiseStores(franchiseId)
-
-  stores_list = []
-  if stores != None:
-    for store in stores:
-      stores_list.append(formatStore(store))
-
-  # Calculate paged data
-  offset = page - 1
-  start = offset * limit
-  end = start + limit
-  total_pages = ceil(len(stores) / limit)
-  total_rows = len(stores)
-  
-  # Get paged data
-  json_data = stores_list[start:end]
-
-  return (json_data, total_rows, total_pages)

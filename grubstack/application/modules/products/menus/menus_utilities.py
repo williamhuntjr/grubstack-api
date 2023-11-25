@@ -3,7 +3,7 @@ from math import ceil
 
 PER_PAGE = app.config['PER_PAGE']
 
-def formatMenu(menu: dict, items_list: list, filters: list = []):
+def format_menu(menu: dict, items_list: list, filters: list = []):
   return {
     "id": menu['menu_id'],
     "name": menu['name'],
@@ -42,7 +42,7 @@ def getMenus(page: int = 1, limit: int = PER_PAGE):
         "sale_price": item['sale_price'],
         "is_onsale": item['is_onsale']
       })
-    menus_list.append(formatMenu(menu, items_list))
+    menus_list.append(format_menu(menu, items_list))
 
   # Calculate paged data
   offset = page - 1

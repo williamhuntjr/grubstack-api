@@ -1,37 +1,33 @@
 import logging, json
+
 from math import ceil
 from flask import Blueprint, url_for, request
+
 from grubstack import app, config, gsdb, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
-from grubstack.application.modules.stores.stores_utilities import formatStore
-from grubstack.application.utilities.filters import generateFilters
-from grubstack.application.utilities.database import deleteFranchise
-from .franchises_utilities import getFranchises, formatParams, getFranchise, getFranchiseStoresPaginated
+from grubstack.application.utilities.filters import generate_filters, create_pagination_params
+from grubstack.application.modules.stores.stores_service import StoreService
+
+from .franchises_utilities import format_params
+from .franchises_constants import DEFAULT_FILTERS, FRANCHISE_FILTERS, PER_PAGE
+from .franchises_service import FranchiseService
 
 franchise = Blueprint('franchise', __name__)
 logger = logging.getLogger('grubstack')
 
-PER_PAGE = app.config['PER_PAGE']
-FRANCHISE_FILTERS = ['showStores', 'showMenus']
+franchise_service = FranchiseService()
+store_service = StoreService()
 
 @franchise.route('/franchises', methods=['GET'])
 @requires_auth
 @requires_permission("ViewFranchises")
 def get_all():
   try:
-    # Get route parameters
-    page = request.args.get('page')
-    limit = request.args.get('limit')
+    page, limit = create_pagination_params(request.args)
 
-    if limit is None: limit = PER_PAGE
-    else: limit = int(limit)
-
-    if page is None: page = 1
-    else: page = int(page)
-
-    json_data, total_rows, total_pages = getFranchises(page, limit, generateFilters(FRANCHISE_FILTERS, request.args))
+    json_data, total_rows, total_pages = franchise_service.get_all(page, limit, generate_filters(FRANCHISE_FILTERS, request.args))
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -46,42 +42,41 @@ def get_all():
 @requires_permission("MaintainFranchises")
 def create():
   try:
-    json_data = {}
-
     if request.json:
       data = json.loads(request.data)
       params = data['params']
+      name = params['name']
 
-      name, description, thumbnail_url = formatParams(params)
+      count = franchise_service.get_franchise_count()
+      limit = franchise_service.get_franchise_limit()
 
-      # Check if has open slots
-      row = gsdb.fetchone("SELECT COUNT(*) FROM gs_franchise")
-      limit = gsprod.fetchone("SELECT franchise_count FROM gs_tenant_features WHERE tenant_id = %s", (app.config['TENANT_ID'],))
-      if row[0] >= limit[0]:
+      if count >= limit:
         return gs_make_response(message='Unable to create franchise. You are out of slots',
                         status=GStatusCode.ERROR,
                         httpstatus=401)
 
       if name:
-        # Check if exists
-        row = gsdb.fetchall("SELECT * FROM gs_franchise WHERE name = %s", (name,))
+        franchise = franchise_service.search(name)
 
-        if row is not None and len(row) > 0:
+        if franchise:
           return gs_make_response(message='That franchise already exists. Try a different name',
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
         else:
-          qry = gsdb.execute("""INSERT INTO gs_franchise 
-                                (tenant_id, franchise_id, name, description, thumbnail_url) 
-                                VALUES 
-                                (%s, DEFAULT, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url))
-          row = gsdb.fetchone("SELECT * FROM gs_franchise WHERE name = %s", (name,))
-          if row is not None and len(row) > 0:
-            headers = {'Location': url_for('franchise.get', franchise_id=row['franchise_id'])}
+          franchise_service.create(format_params(params))
+          franchise = franchise_service.search(name)
+
+          if franchise is not None:
+            headers = {'Location': url_for('franchise.get', franchise_id=franchise['id'])}
             return gs_make_response(message=f'Franchise {name} successfully created',
                                 httpstatus=201,
                                 headers=headers,
-                                data=row)
+                                data=franchise)
+          else:
+            return gs_make_response(message='Unable to create franchise',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
       else:
         return gs_make_response(message='Invalid data',
                                 status=GStatusCode.ERROR,
@@ -98,11 +93,8 @@ def create():
 @requires_permission("ViewFranchises")
 def get(franchise_id: int):
   try:
-    filters = {
-      "showStores": True,
-      "showMenus": True
-    }
-    franchise = getFranchise(franchise_id, filters)
+    franchise = franchise_service.get(franchise_id, DEFAULT_FILTERS)
+
     if franchise:
       return gs_make_response(data=franchise)
 
@@ -121,20 +113,19 @@ def get(franchise_id: int):
 @requires_permission("MaintainFranchises")
 def delete():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
       franchise_id = params['franchise_id']
+
       if franchise_id:
-        # Check if exists
-        franchise = getFranchise(franchise_id)
+        franchise = franchise_service.get(franchise_id)
         if franchise is None:
           return gs_make_response(message='Franchise not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          deleteFranchise(franchise_id)
+          franchise_service.delete(franchise_id)
           return gs_make_response(message=f'Franchise #{franchise_id} deleted')
           
       else:
@@ -152,28 +143,25 @@ def delete():
 @requires_permission("MaintainFranchises")
 def update():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
       franchise_id = params['id']
-      name, description, thumbnail_url = formatParams(params)
+      name = params['name']
 
       if franchise_id and name:
-        # Check if exists
-        franchise = getFranchise(franchise_id)
+        franchise = franchise_service.get(franchise_id)
 
         if franchise is None:
           return gs_make_response(message=f'Franchise {name} does not exist',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          qry = gsdb.execute("UPDATE gs_franchise SET (name, description, thumbnail_url) = (%s, %s, %s) WHERE franchise_id = %s", (name, description, thumbnail_url, franchise_id,))
+          franchise_service.update(franchise_id, format_params(params))
           headers = {'Location': url_for('franchise.get', franchise_id=franchise_id)}
           return gs_make_response(message=f'Franchise {name} successfully updated',
                     httpstatus=201,
-                    headers=headers,
-                    data=json_data)
+                    headers=headers)
 
       else:
         return gs_make_response(message='Invalid data',
@@ -186,22 +174,14 @@ def update():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchise/<int:franchiseId>/stores', methods=['GET'])
+@franchise.route('/franchise/<int:franchise_id>/stores', methods=['GET'])
 @requires_auth
 @requires_permission("MaintainFranchises")
-def get_all_stores(franchiseId):
+def get_all_stores(franchise_id):
   try:
-    # Get route parameters
-    page = request.args.get('page')
-    limit = request.args.get('limit')
+    page, limit = create_pagination_params(request.args)
 
-    if limit is None: limit = PER_PAGE
-    else: limit = int(limit)
-
-    if page is None: page = 1
-    else: page = int(page)
-
-    json_data, total_rows, total_pages = getFranchiseStoresPaginated(franchiseId, page, limit)
+    json_data, total_rows, total_pages = franchise_service.get_stores_paginated(franchise_id, page, limit)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -216,7 +196,6 @@ def get_all_stores(franchiseId):
 @requires_permission("MaintainFranchises")
 def add_store():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
@@ -224,21 +203,26 @@ def add_store():
       store_id = params['store_id']
 
       if franchise_id is not None and store_id is not None:
-        # Check if exists
-        franchise = getFranchise(franchise_id)
-        store = gsdb.fetchone("SELECT * FROM gs_store WHERE store_id = %s", (store_id,))
-        is_existing = gsdb.fetchone("SELECT * FROM gs_franchise_store WHERE franchise_id = %s AND store_id = %s", (franchise_id, store_id,))
-        if franchise is None or store is None:
-          return gs_make_response(message='Invalid franchise or invalid store',
+        franchise = franchise_service.get(franchise_id)
+        store = store_service.get(store_id)
+
+        is_existing = franchise_service.store_exists(franchise_id, store_id)
+        
+        if franchise is None:
+          return gs_make_response(message='Franchise does not exist',
                                   status=GStatusCode.ERROR,
-                                  httpstatus=400)
+                                  httpstatus=404)
+
+        if store is None:
+          return gs_make_response(message='Store does not exist',
+                                  status=GStatusCode.ERROR,
+                                  httpstatus=404)
+
         else:
           if not is_existing:
-            qry = gsdb.execute("""INSERT INTO gs_franchise_store 
-                                  (tenant_id, franchise_id, store_id)
-                                  VALUES 
-                                  (%s, %s, %s)""", (app.config["TENANT_ID"], franchise_id, store_id,))
+            franchise_service.add_store(franchise_id, store_id)
             return gs_make_response(message=f'Store #{store_id} added to franchise')
+
           else:
             return gs_make_response(message=f'Store already exists on franchise',
                                     status=GStatusCode.ERROR,
@@ -258,7 +242,6 @@ def add_store():
 @requires_permission("MaintainFranchises")
 def delete_store():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
@@ -266,16 +249,16 @@ def delete_store():
       store_id = params['store_id']
 
       if franchise_id and store_id:
-        # Check if exists
-        franchise_store = gsdb.fetchone("SELECT * FROM gs_franchise_store WHERE franchise_id = %s AND store_id = %s", (franchise_id, store_id,))
-        if franchise_store is None:
+        is_existing = franchise_service.store_exists(franchise_id, store_id)
+
+        if is_existing is None:
           return gs_make_response(message='Invalid franchise store',
                                   status=GStatusCode.ERROR,
-                                  httpstatus=400)
+                                  httpstatus=404)
         else:
-          qry = gsdb.execute("DELETE FROM gs_franchise_store WHERE franchise_id = %s AND store_id = %s", (franchise_id, store_id,))
+          franchise_service.delete_store(franchise_id, store_id)
           return gs_make_response(message=f'Store #{store_id} deleted from franchise')
-          
+           
       else:
         return gs_make_response(message='Invalid data',
                                 status=GStatusCode.ERROR,

@@ -5,7 +5,7 @@ from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import AuthError, requires_auth, requires_permission
-from .menus_utilities import formatMenu, getMenus, formatParams, getMenuItems
+from .menus_utilities import format_menu, getMenus, formatParams, getMenuItems
 from ..items.items_utilities import getAllItemVarieties
 
 menu = Blueprint('menu', __name__)
@@ -105,7 +105,7 @@ def get(menuId: int, showVarieties: bool = False):
           "is_onsale": item['is_onsale'],
           "varieties": varieties
         })
-      json_data = formatMenu(row, items_list)
+      json_data = format_menu(row, items_list)
 
     return gs_make_response(data=json_data)
 
@@ -231,7 +231,9 @@ def add_item():
         # Check if exists
         menu = gsdb.fetchone("SELECT * FROM gs_menu WHERE menu_id = %s", (menu_id,))
         item = gsdb.fetchone("SELECT * FROM gs_item WHERE item_id = %s", (item_id,))
+
         is_existing = gsdb.fetchone("SELECT * FROM gs_menu_item WHERE menu_id = %s AND item_id = %s", (menu_id, item_id,))
+        
         if menu is None or item is None:
           return gs_make_response(message='Invalid menu or invalid item',
                                   status=GStatusCode.ERROR,
