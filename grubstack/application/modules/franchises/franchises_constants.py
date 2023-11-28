@@ -5,4 +5,5 @@ FRANCHISE_FILTERS = ['showStores', 'showMenus']
 
 DEFAULT_FILTERS = {
   "showStores": True,
+  "showMenus": True,
 }

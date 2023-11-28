@@ -3,6 +3,7 @@ from math import ceil
 from flask import Blueprint, url_for, request
 from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
+from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import requires_auth, requires_permission
 from .ingredients_utilities import buildGramMeasurement, buildMilligramMeasurement, formatIngredient, getIngredients, formatParams
@@ -17,15 +18,7 @@ PER_PAGE = app.config['PER_PAGE']
 @requires_permission("ViewIngredients")
 def get_all():
   try:
-    # Get route parameters
-    page = request.args.get('page')
-    limit = request.args.get('limit')
-
-    if limit is None: limit = PER_PAGE
-    else: limit = int(limit)
-
-    if page is None: page = 1
-    else: page = int(page)
+    page, limit = create_pagination_params(request.args)
 
     json_data, total_rows, total_pages = getIngredients(page, limit)
 

@@ -3,8 +3,8 @@ from math import ceil
 
 PER_PAGE = app.config['PER_PAGE']
 
-def formatItem(item: dict, ingredients_list = [], varieties_list: list = []):
-  return {
+def formatItem(item: dict, ingredients_list = [], varieties_list: list = [], filters: list = []):
+  json_data = {
     "id": item['item_id'],
     "name": item['name'],
     "description": item['description'],
@@ -14,6 +14,13 @@ def formatItem(item: dict, ingredients_list = [], varieties_list: list = []):
     "varieties": varieties_list
   }
   
+  if 'price' in item and 'is_onsale' in item and 'sale_price' in item:
+    json_data['price'] = item['price']
+    json_data['is_onsale'] = item['is_onsale']
+    json_data['sale_price'] = item['sale_price']
+
+  return json_data
+
 def formatParams(params: dict):
   name = params['name']
   description = params['description'] or ''

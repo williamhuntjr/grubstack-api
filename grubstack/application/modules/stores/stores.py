@@ -52,7 +52,7 @@ def create():
       limit = store_service.get_store_limit()
 
       if count >= limit:
-        return gs_make_response(message='Unable to create store. You are out of slots',
+        return gs_make_response(message='Unable to create store. Your subscription limit has been reached.',
                         status=GStatusCode.ERROR,
                         httpstatus=401)
 
@@ -158,7 +158,7 @@ def update():
         row = store_service.get(store_id)
 
         if row is None:
-          return gs_make_response(message=f'Store {name} does not exist',
+          return gs_make_response(message=f'Store not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
@@ -166,8 +166,7 @@ def update():
           headers = {'Location': url_for('store.get', store_id=store_id)}
           return gs_make_response(message=f'Store {name} successfully updated',
                     httpstatus=201,
-                    headers=headers,
-                    data=json_data)
+                    headers=headers)
 
       else:
         return gs_make_response(message='Invalid data',
@@ -183,8 +182,15 @@ def update():
 @store.route('/store/<int:store_id>/menus', methods=['GET'])
 @requires_auth
 @requires_permission("MaintainStores")
-def get_all_menus(store_id):
+def get_all_menus(store_id: int):
   try:
+    store = store_service.get(store_id, DEFAULT_FILTERS)
+
+    if store == None:
+      return gs_make_response(message='Store not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+                              
     page, limit = create_pagination_params(request.args)
 
     json_data, total_rows, total_pages = store_service.get_menus_paginated(store_id, page, limit)
@@ -216,18 +222,18 @@ def add_menu():
         is_existing = store_service.menu_exists(store_id, menu_id)
         
         if store is None:
-          return gs_make_response(message='Store does not exist',
+          return gs_make_response(message='Store not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         if menu is None:
-          return gs_make_response(message='Menu does not exist',
+          return gs_make_response(message='Menu not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
           if not is_existing:
             store_service.add_menu(store_id, menu_id)
             
-            return gs_make_response(message=f'Menu #{menu_id} added to store')
+            return gs_make_response(message=f'Menu #{menu_id} added to store', httpstatus=201)
           else:
             return gs_make_response(message=f'Menu already exists on store',
                                     status=GStatusCode.ERROR,

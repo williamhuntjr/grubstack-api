@@ -51,7 +51,7 @@ def create():
       limit = franchise_service.get_franchise_limit()
 
       if count >= limit:
-        return gs_make_response(message='Unable to create franchise. You are out of slots',
+        return gs_make_response(message='Unable to create franchise. Your subscription limit has been reached.',
                         status=GStatusCode.ERROR,
                         httpstatus=401)
 
@@ -153,7 +153,7 @@ def update():
         franchise = franchise_service.get(franchise_id)
 
         if franchise is None:
-          return gs_make_response(message=f'Franchise {name} does not exist',
+          return gs_make_response(message=f'Franchise not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
@@ -177,8 +177,15 @@ def update():
 @franchise.route('/franchise/<int:franchise_id>/stores', methods=['GET'])
 @requires_auth
 @requires_permission("MaintainFranchises")
-def get_all_stores(franchise_id):
+def get_all_stores(franchise_id: int):
   try:
+    franchise = franchise_service.get(franchise_id, DEFAULT_FILTERS)
+
+    if franchise == None:
+      return gs_make_response(message='Franchise not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+
     page, limit = create_pagination_params(request.args)
 
     json_data, total_rows, total_pages = franchise_service.get_stores_paginated(franchise_id, page, limit)
@@ -209,19 +216,19 @@ def add_store():
         is_existing = franchise_service.store_exists(franchise_id, store_id)
         
         if franchise is None:
-          return gs_make_response(message='Franchise does not exist',
+          return gs_make_response(message='Franchise not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
 
         if store is None:
-          return gs_make_response(message='Store does not exist',
+          return gs_make_response(message='Store not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
 
         else:
           if not is_existing:
             franchise_service.add_store(franchise_id, store_id)
-            return gs_make_response(message=f'Store #{store_id} added to franchise')
+            return gs_make_response(message=f'Store #{store_id} added to franchise', httpstatus=201)
 
           else:
             return gs_make_response(message=f'Store already exists on franchise',

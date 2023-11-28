@@ -3,6 +3,7 @@ from pypika import Query, Table, Order, functions
 
 from grubstack import app, gsdb, gsprod
 from grubstack.application.modules.products.menus.menus_utilities import format_menu
+from grubstack.application.modules.products.items.items_utilities import formatItem
 from grubstack.application.constants import DEFAULT_STORE_LIMIT
 from grubstack.application.utilities.filters import generate_paginated_data
 
@@ -23,6 +24,15 @@ class StoreService:
       if menus != None:
         for menu in menus:
           items_list = []
+
+          if 'showItems' in filters and filters['showItems']:
+            items = gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
+                      FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
+                      WHERE p.menu_id = %s ORDER BY name ASC""", (menu['menu_id'],))
+            
+            for item in items:
+              items_list.append(formatItem(item))
+
           menus_list.append(format_menu(menu, items_list, filters))
 
     return format_store(store, menus_list, filters)

@@ -3,6 +3,7 @@ from pypika import Query, Table, Order, functions
 
 from grubstack import app, gsdb, gsprod
 from grubstack.application.modules.stores.stores_utilities import format_store
+from grubstack.application.modules.products.menus.menus_utilities import format_menu
 from grubstack.application.constants import DEFAULT_FRANCHISE_LIMIT
 from grubstack.application.utilities.filters import generate_paginated_data
 
@@ -22,6 +23,15 @@ class FranchiseService:
       if stores != None:
         for store in stores:
           menus_list = []
+
+          if 'showMenus' in filters and filters['showMenus']:
+            menus = gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url, label_color
+                                    FROM gs_menu c INNER JOIN gs_store_menu p ON p.menu_id = c.menu_id 
+                                    WHERE p.store_id = %s ORDER BY name ASC""", (store['store_id'],))
+
+            for menu in menus:
+              menus_list.append(format_menu(menu))
+
           stores_list.append(format_store(store, menus_list, filters))
 
     return format_franchise(franchise, stores_list, filters)

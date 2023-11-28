@@ -15,13 +15,11 @@ class MenuService:
   def apply_filters(self, menu, filters: list = []):
     items_list = []
 
-    if 'showStores' in filters and filters['showStores']:
+    if 'showItems' in filters and filters['showItems']:
       items = self.get_items(menu['menu_id'])
-
       if items != None:
         for item in items:
-          menus_list = []
-          items_list.append(formatItem(item, menus_list, filters))
+          items_list.append(formatItem(item, [], [], filters))
 
     return format_menu(menu, items_list, filters)
 
@@ -47,6 +45,28 @@ class MenuService:
     filtered_data = self.apply_filters(menu, filters)
     return filtered_data
 
+  def search(self, menu_name: str):
+    table = Table('gs_menu')
+    qry = Query.from_('gs_menu').select('*').where(table.name == menu_name)
+    
+    menu = gsdb.fetchone(str(qry))
+
+    if menu != None:
+      return format_menu(menu)
+
+    return
+
+  def update(self, menu_id: int, params: dict = ()):
+    name, description, thumbnail_url, label_color = params
+    return gsdb.execute("UPDATE gs_menu SET (name, description, thumbnail_url, label_color) = (%s, %s, %s, %s) WHERE menu_id = %s", (name, description, thumbnail_url, label_color, menu_id,))
+
+  def create(self, params: dict = ()):
+    name, description, thumbnail_url, label_color = params
+    return gsdb.execute("""INSERT INTO gs_menu 
+                        (tenant_id, menu_id, name, description, thumbnail_url, label_color)
+                        VALUES
+                        (%s, DEFAULT, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url, label_color,))
+
   def delete(self, menu_id: int):
     gsdb.execute("DELETE FROM gs_menu WHERE menu_id = %s", (menu_id,))
     gsdb.execute("DELETE FROM gs_menu_item WHERE menu_id = %s", (menu_id,))
@@ -63,9 +83,34 @@ class MenuService:
     return False
 
   def get_items(self, menu_id: int):
-    return gsdb.fetchall("""SELECT c.item_id, name, address1, city, state, postal, item_type, thumbnail_url, phone_number
-                              FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
-                              WHERE p.menu_id = %s ORDER BY name ASC""", (menu_id,))
+    return gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
+                      FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
+                      WHERE p.menu_id = %s ORDER BY name ASC""", (menu_id,))
+
+  def add_item(self, menu_id: int, item_id: int, params: dict):
+    price, sale_price, is_onsale = params
+    return gsdb.execute("""INSERT INTO gs_menu_item 
+                                  (tenant_id, menu_id, item_id, price, sale_price, is_onsale)
+                                  VALUES 
+                                  (%s, %s, %s, %s, %s, %s)""", (app.config["TENANT_ID"], menu_id, item_id, price, sale_price, is_onsale,))
+
+  def delete_item(self, menu_id: int, item_id: int):
+    gsdb.execute("DELETE FROM gs_menu_item WHERE menu_id = %s AND item_id = %s", (menu_id, item_id,))
+
+  def update_item(self, menu_id: int, item_id: int, params: dict):
+    price, sale_price, is_onsale = params
+    gsdb.execute("UPDATE gs_menu_item SET price = %s, sale_price = %s, is_onsale = %s WHERE menu_id = %s AND item_id = %s", (price, sale_price, is_onsale, menu_id, item_id,))
+  
+  def item_exists(self, menu_id: int, item_id: int):
+    table = Table('gs_menu_item')
+    qry = Query.from_('gs_menu_item').select('*').where(table.menu_id == menu_id).where(table.item_id == item_id)
+    
+    store = gsdb.fetchone(str(qry))
+
+    if store is not None:
+      return True
+    
+    return False
 
   def get_items_paginated(self, menu_id: int, page: int = 1, limit: int = PER_PAGE):
     json_data = []

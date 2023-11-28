@@ -5,4 +5,5 @@ STORE_FILTERS = ['showMenus', 'showItems']
 
 DEFAULT_FILTERS = {
   "showMenus": True,
+  "showItems": True,
 }
