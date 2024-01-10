@@ -93,13 +93,12 @@ def requires_auth(f):
         except Exception:
             raise AuthError({ "code": "invalid_header",
                               "description":"Unable to parse authentication token." }, 401)
-
-        _request_ctx_stack.top.current_user = payload
         row = gsprod.fetchall("SELECT * FROM gs_user_tenant WHERE user_id = %s AND tenant_id = %s", (payload['sub'], app.config['TENANT_ID'],))
 
         if len(row) <= 0:
             raise AuthError({ "code": "invalid_tenant",
                               "description":"You do not have access to this tenant." }, 403)
+        _request_ctx_stack.top.current_user = payload
         return f(*args, **kwargs)
       raise AuthError({ "code": "invalid_header",
                         "description": "Unable to find appropriate key" }, 401)
@@ -293,7 +292,6 @@ def verify_tenant():
     except Exception:
       raise AuthError({ "code": "invalid_header",
                         "description":"Unable to parse authentication token." }, 401)
-
     row = gsprod.fetchall("SELECT * FROM gs_user_tenant WHERE user_id = %s AND tenant_id = %s", (payload['sub'], app.config['TENANT_ID'],))
     if len(row) <= 0:
       raise AuthError({"code": "invalid_tenant",

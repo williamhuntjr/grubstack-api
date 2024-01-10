@@ -70,8 +70,8 @@ app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER') or 'Gr
 app.config['MAIL_DEBUG']          = os.environ.get('MAIL_DEBUG') or False
 
 # auth0
-app.config['AUTH0_DOMAIN'] = 'dev-x2xvjtterdxi3zgj.us.auth0.com'
-app.config['AUTH0_AUDIENCE'] = 'https://api.grubstack.app/v1'
+app.config['AUTH0_DOMAIN'] = os.environ.get('AUTH0_DOMAIN') or 'dev-x2xvjtterdxi3zgj.us.auth0.com'
+app.config['AUTH0_AUDIENCE'] = os.environ.get('AUTH0_AUDIENCE') or 'https://api.grubstack.app/v1'
 
 # Initialize globals
 mail = Mail(app)

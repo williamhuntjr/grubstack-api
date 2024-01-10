@@ -88,7 +88,7 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchise/<string:franchise_id>', methods=['GET'])
+@franchise.route('/franchise/<int:franchise_id>', methods=['GET'])
 @requires_auth
 @requires_permission("ViewFranchises")
 def get(franchise_id: int):

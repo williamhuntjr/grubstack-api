@@ -141,8 +141,8 @@ class StoreService:
     return 0
 
   def get_store_limit(self):
-    table = Table('gs_tenant_features')
-    qry = Query.from_('gs_tenant_features').select('store_count').where(table.tenant_id == app.config['TENANT_ID'])
+    table = Table('gs_tenant_feature')
+    qry = Query.from_('gs_tenant_feature').select('store_count').where(table.tenant_id == app.config['TENANT_ID'])
     
     result = gsprod.fetchone(str(qry))
 

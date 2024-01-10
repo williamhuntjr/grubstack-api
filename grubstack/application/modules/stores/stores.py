@@ -90,7 +90,7 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@store.route('/store/<string:store_id>', methods=['GET'])
+@store.route('/store/<int:store_id>', methods=['GET'])
 @requires_auth
 @requires_permission("ViewStores")
 def get(store_id: int):

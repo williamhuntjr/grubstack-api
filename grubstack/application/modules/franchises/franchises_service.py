@@ -144,8 +144,8 @@ class FranchiseService:
     return 0
 
   def get_franchise_limit(self):
-    table = Table('gs_tenant_features')
-    qry = Query.from_('gs_tenant_features').select('franchise_count').where(table.tenant_id == app.config['TENANT_ID'])
+    table = Table('gs_tenant_feature')
+    qry = Query.from_('gs_tenant_feature').select('franchise_count').where(table.tenant_id == app.config['TENANT_ID'])
     
     result = gsprod.fetchone(str(qry))
 
