@@ -153,7 +153,7 @@ def requires_permission(*expected_args):
       user_id = get_user_id()
       if user_id != None:
         permissions = []  
-        row = gsdb.fetchall("SELECT f.permission_id, name FROM gs_user_permission f LEFT JOIN gs_permission i USING (permission_id) WHERE f.user_id = %s ORDER BY name ASC", (user_id,))
+        row = gsdb.fetchall("SELECT f.permission_id, name FROM gs_user_permission f LEFT JOIN gs_permission i USING (permission_id) WHERE f.user_id = %s AND f.tenant_id = %s ORDER BY name ASC", (user_id, app.config['TENANT_ID'],))
         if row != None:
           for permission in row:
             permissions.append(permission['name'])
@@ -239,14 +239,14 @@ def get_userinfo():
     permissions = []
 
     is_owner = gsprod.fetchone("SELECT is_owner FROM gs_user_tenant WHERE tenant_id = %s AND user_id = %s", (app.config['TENANT_ID'], json_data['sub'],))
-    if is_owner:
+    if is_owner == True:
       row = gsdb.fetchall("SELECT name FROM gs_permission")
       if row != None:
         for permission in row:
           permissions.append(permission['name'])
 
     else:
-      row = gsdb.fetchall("SELECT f.permission_id, name FROM gs_user_permission f LEFT JOIN gs_permission i USING (permission_id) WHERE f.user_id = %s ORDER BY name ASC", (json_data['sub'],))
+      row = gsdb.fetchall("SELECT f.permission_id, name FROM gs_user_permission f LEFT JOIN gs_permission i USING (permission_id) WHERE f.user_id = %s and f.tenant_id = %s ORDER BY name ASC", (json_data['sub'], app.config['TENANT_ID'],))
       if row != None:
         for permission in row:
           permissions.append(permission['name'])
