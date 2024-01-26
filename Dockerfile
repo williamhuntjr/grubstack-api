@@ -1,10 +1,12 @@
-FROM python:3.10
+FROM python:3.11
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
         libatlas-base-dev gfortran nginx supervisor nfs-common
 
 RUN pip3 install uwsgi
+
+ENV PGSSLCERT /tmp/postgresql.crt
 
 COPY ./requirements.txt /opt/grubstack-api/requirements.txt
 
@@ -23,7 +25,7 @@ COPY supervisord.conf /etc/
 COPY grubstack/grubstack.ini.sample /opt/grubstack-api/grubstack/grubstack.ini
 COPY main.py /opt/grubstack-api/
 COPY grubstack /opt/grubstack-api/grubstack
-
+ 
 WORKDIR /opt/grubstack-api
 
 CMD ["/usr/bin/supervisord"]
