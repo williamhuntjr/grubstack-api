@@ -239,7 +239,7 @@ def get_userinfo():
     permissions = []
 
     is_owner = gsprod.fetchone("SELECT is_owner FROM gs_user_tenant WHERE tenant_id = %s AND user_id = %s", (app.config['TENANT_ID'], json_data['sub'],))
-    if is_owner == True:
+    if is_owner[0] == True:
       row = gsdb.fetchall("SELECT name FROM gs_permission")
       if row != None:
         for permission in row:
