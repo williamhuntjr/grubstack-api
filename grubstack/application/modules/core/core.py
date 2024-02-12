@@ -35,7 +35,7 @@ def update_apps():
     access_token = request.cookies.get('access_token_cookie')
 
     for product in products:
-      if product['product_name'] != 'GrubStack API':
+      if product['name'] != 'GrubStack API':
         url = 'https://api.grubstack.app/v1/product/app/restart'
         data = {"params": {"app_id": product['app_id']}}
         headers = {
