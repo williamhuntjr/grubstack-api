@@ -32,7 +32,7 @@ def update_apps():
   try:
     products = gsprod.fetchall("SELECT app_id, app_url, c.tenant_id, c.product_id, p.is_front_end_app, p.name, p.description FROM gs_tenant_app c INNER JOIN gs_product p on p.product_id = c.product_id WHERE c.tenant_id = %s", (app.config['TENANT_ID'],))
 
-    access_token = request.cookies.get('access_token_cookie')
+    access_token = request.cookies.get('_grubstack_access_token')
 
     for product in products:
       if product['name'] != 'GrubStack API':
