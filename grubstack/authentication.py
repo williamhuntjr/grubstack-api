@@ -116,7 +116,7 @@ def jwt_required(optional=False, fresh=False, refresh=False, locations=None):
         if auth_header != 'Basic ' + app.config['ACCESS_TOKEN']:
           raise AuthError({ "code": "invalid_tenant",
                     "description":"You do not have access to this tenant." }, 403)
-        return f(*args, **kwargs)
+        return func(*args, **kwargs)
       verify_jwt_in_request(optional=optional, fresh=fresh, refresh=refresh, locations=locations)
       user = get_current_user()
       if config.getboolean('logging', 'log_requests'):
