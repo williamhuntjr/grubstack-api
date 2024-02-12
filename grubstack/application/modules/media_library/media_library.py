@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import requires_auth, requires_permission
+from grubstack.authentication import jwt_required, requires_permission
 from .media_library_utilities import allowed_file
 
 media_library = Blueprint('media_library', __name__)
@@ -16,7 +16,7 @@ UPLOAD_FOLDER = '/uploads/' + app.config['TENANT_ID']
 PER_PAGE = 30
 
 @media_library.route('/media-library', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission('ViewMediaLibrary')
 def get_all():
   try:
@@ -60,7 +60,7 @@ def get_all():
                             httpstatus=500)
 
 @media_library.route('/media-library/upload', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission('MaintainMediaLibrary')
 def upload_file():
   try:
@@ -106,7 +106,7 @@ def upload_file():
                             httpstatus=500)
 
 @media_library.route('/media-library/delete', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainMediaLibrary")
 def delete_file():
   try:

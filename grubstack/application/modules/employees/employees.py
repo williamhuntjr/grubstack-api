@@ -5,7 +5,7 @@ from datetime import datetime
 from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import requires_auth, requires_permission
+from grubstack.authentication import jwt_required, requires_permission
 from .employees_utilities import formatEmployee, getEmployees, formatParams
 
 employee = Blueprint('employee', __name__)
@@ -14,7 +14,7 @@ logger = logging.getLogger('grubstack')
 PER_PAGE = app.config['PER_PAGE']
 
 @employee.route('/employees', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewEmployees")
 def get_all():
   try:
@@ -39,7 +39,7 @@ def get_all():
                             httpstatus=500)
 
 @employee.route('/employee/create', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainEmployees")
 def create():
   try:
@@ -81,7 +81,7 @@ def create():
                             httpstatus=500)
 
 @employee.route('/employee/<string:employee_id>', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewEmployees")
 def get(employee_id: int):
   try:
@@ -103,7 +103,7 @@ def get(employee_id: int):
                             httpstatus=500)
 
 @employee.route('/employee/delete', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainEmployees")
 def delete():
   try:
@@ -135,7 +135,7 @@ def delete():
                             httpstatus=500)
 
 @employee.route('/employee/update', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainEmployees")
 def update():
   try:

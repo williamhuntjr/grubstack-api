@@ -5,7 +5,7 @@ from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import requires_auth, requires_permission
+from grubstack.authentication import jwt_required, requires_permission
 from .ingredients_utilities import buildGramMeasurement, buildMilligramMeasurement, formatIngredient, getIngredients, formatParams
 
 ingredient = Blueprint('ingredient', __name__)
@@ -14,7 +14,7 @@ logger = logging.getLogger('grubstack')
 PER_PAGE = app.config['PER_PAGE']
 
 @ingredient.route('/ingredients', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewIngredients")
 def get_all():
   try:
@@ -31,7 +31,7 @@ def get_all():
                             httpstatus=500)
 
 @ingredient.route('/ingredient/create', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainIngredients")
 def create():
   try:
@@ -75,7 +75,7 @@ def create():
                             httpstatus=500)
 
 @ingredient.route('/ingredient/<string:ingredient_id>', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewIngredients")
 def get(ingredient_id: int):
   try:
@@ -97,7 +97,7 @@ def get(ingredient_id: int):
                             httpstatus=500)
 
 @ingredient.route('/ingredient/delete', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainIngredients")
 def delete():
   try:
@@ -129,7 +129,7 @@ def delete():
                             httpstatus=500)
 
 @ingredient.route('/ingredient/update', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainIngredients")
 def update():
   try:

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-__version__ = '0.1.2'
+__version__ = '0.2.0'
 import logging, configparser, os, sys, argparse
 from dotenv import load_dotenv
 from flask import Flask
 from flask_mail import Mail
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
@@ -69,9 +70,19 @@ app.config['MAIL_PASSWORD']       = os.environ.get('MAIL_PASSWORD') or 'grubstac
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER') or 'GrubStack API <api@grubstack.app>'
 app.config['MAIL_DEBUG']          = os.environ.get('MAIL_DEBUG') or False
 
-# auth0
-app.config['AUTH0_DOMAIN'] = os.environ.get('AUTH0_DOMAIN') or 'dev-x2xvjtterdxi3zgj.us.auth0.com'
-app.config['AUTH0_AUDIENCE'] = os.environ.get('AUTH0_AUDIENCE') or 'https://api.grubstack.app/v1'
+# flask-jwt
+app.config['JWT_SECRET_KEY'] = config.get('authentication', 'secret', fallback='secret')
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = config.getint('authentication', 'access_token_expires', fallback=3600)
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = config.getint('authentication', 'refresh_token_expires', fallback=2592000)
+app.config['JWT_TOKEN_LOCATION'] = ["cookies", "headers", "json"]
+app.config['JWT_COOKIE_DOMAIN'] = '.grubstack.app'
+app.config['JWT_COOKIE_CSRF_PROTECT'] = False
+app.config["JWT_COOKIE_SECURE"] = True
+app.config['JWT_COOKIE_SAMESITE'] = 'None'
+app.config['JWT_ACCESS_COOKIE_NAME'] = '_grubstack_access_token'
+app.config['JWT_REFRESH_COOKIE_NAME'] = '_grubstack_refresh_token'
+app.config['SESSION_COOKIE_HTTPONLY'] = False
+jwt = JWTManager(app)
 
 # Initialize globals
 mail = Mail(app)

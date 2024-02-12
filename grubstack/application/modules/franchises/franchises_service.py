@@ -37,7 +37,15 @@ class FranchiseService:
     return format_franchise(franchise, stores_list, filters)
 
   def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
-    qry = Query.from_('gs_franchise').select('*').orderby('name', order=Order.asc)
+    qry = Query.from_(
+      'gs_franchise'
+    ).select(
+      '*'
+    ).orderby(
+      'name',
+      order=Order.asc
+    )
+    
     franchises = gsdb.fetchall(str(qry),)
 
     filtered = []
@@ -60,7 +68,13 @@ class FranchiseService:
 
   def search(self, franchise_name: str):
     table = Table('gs_franchise')
-    qry = Query.from_('gs_franchise').select('*').where(table.name == franchise_name)
+    qry = Query.from_(
+      'gs_franchise'
+    ).select(
+      '*'
+    ).where(
+      table.name == franchise_name
+    )
     
     franchise = gsdb.fetchone(str(qry))
 

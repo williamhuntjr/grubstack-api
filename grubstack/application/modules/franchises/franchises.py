@@ -6,7 +6,7 @@ from flask import Blueprint, url_for, request
 from grubstack import app, config, gsdb, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import requires_auth, requires_permission
+from grubstack.authentication import jwt_required, requires_permission
 from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 from grubstack.application.modules.stores.stores_service import StoreService
 
@@ -21,7 +21,7 @@ franchise_service = FranchiseService()
 store_service = StoreService()
 
 @franchise.route('/franchises', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewFranchises")
 def get_all():
   try:
@@ -38,7 +38,7 @@ def get_all():
                             httpstatus=500)
 
 @franchise.route('/franchise/create', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainFranchises")
 def create():
   try:
@@ -89,7 +89,7 @@ def create():
                             httpstatus=500)
 
 @franchise.route('/franchise/<int:franchise_id>', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewFranchises")
 def get(franchise_id: int):
   try:
@@ -109,7 +109,7 @@ def get(franchise_id: int):
                             httpstatus=500)
 
 @franchise.route('/franchise/delete', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainFranchises")
 def delete():
   try:
@@ -139,7 +139,7 @@ def delete():
                             httpstatus=500)
 
 @franchise.route('/franchise/update', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainFranchises")
 def update():
   try:
@@ -175,7 +175,7 @@ def update():
                             httpstatus=500)
 
 @franchise.route('/franchise/<int:franchise_id>/stores', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainFranchises")
 def get_all_stores(franchise_id: int):
   try:
@@ -199,7 +199,7 @@ def get_all_stores(franchise_id: int):
                             httpstatus=500)
 
 @franchise.route('/franchise/addStore', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainFranchises")
 def add_store():
   try:
@@ -245,7 +245,7 @@ def add_store():
                             httpstatus=500)
 
 @franchise.route('/franchise/deleteStore', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainFranchises")
 def delete_store():
   try:

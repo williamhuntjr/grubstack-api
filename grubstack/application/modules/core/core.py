@@ -3,7 +3,7 @@ from flask import Blueprint, url_for, request
 from grubstack import app, config, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import requires_auth, get_token_auth_header
+from grubstack.authentication import jwt_required
 
 core = Blueprint('core', __name__)
 logger = logging.getLogger('grubstack')
@@ -27,17 +27,19 @@ def get_versions():
                             httpstatus=500)
 
 @core.route('/core/updateApps', methods=['POST'])
-@requires_auth
+@jwt_required()
 def update_apps():
   try:
     products = gsprod.fetchall("SELECT app_id, app_url, c.tenant_id, c.product_id, p.is_front_end_app, p.product_name, p.product_description FROM gs_tenant_app c INNER JOIN gs_product p on p.product_id = c.product_id WHERE c.tenant_id = %s", (app.config['TENANT_ID'],))
+
+    access_token = request.cookies.get('access_token_cookie') or request.headers['Authorization'].split(None, 1)[1].strip()
 
     for product in products:
       if product['product_name'] != 'GrubStack API':
         url = 'https://api.grubstack.app/v1/product/app/restart'
         data = {"params": {"app_id": product['app_id']}}
         headers = {
-          'Authorization': 'Bearer ' + get_token_auth_header(),
+          'Authorization': 'Bearer ' + access_token,
           'Content-Type': 'application/json'
         }
         resp = requests.post(url, json=data, headers=headers, verify=False)

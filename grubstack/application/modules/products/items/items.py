@@ -6,7 +6,7 @@ from flask import Blueprint, url_for, request
 from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import requires_auth, requires_permission
+from grubstack.authentication import jwt_required, requires_permission
 from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 
 from .items_utilities import formatItem, getItems, getItemIngredients, formatParams, getAllItemIngredients, getAllItemVarieties
@@ -16,7 +16,7 @@ logger = logging.getLogger('grubstack')
 PER_PAGE = app.config['PER_PAGE']
 
 @item.route('/items', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewItems")
 def get_all():
   try:
@@ -33,7 +33,7 @@ def get_all():
                             httpstatus=500)
 
 @item.route('/item/create', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainItems")
 def create():
   try:
@@ -75,7 +75,7 @@ def create():
                             httpstatus=500)
 
 @item.route('/item/<string:itemId>', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewItems")
 def get(itemId: int):
   try:
@@ -102,7 +102,7 @@ def get(itemId: int):
                             httpstatus=500)
 
 @item.route('/item/delete', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainItems")
 def delete():
   try:
@@ -135,7 +135,7 @@ def delete():
                             httpstatus=500)
 
 @item.route('/item/update', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainItems")
 def update():
   try:
@@ -174,7 +174,7 @@ def update():
                             httpstatus=500)
 
 @item.route('/item/<int:itemId>/ingredients', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewItems")
 def get_all_ingredients(itemId):
   try:
@@ -191,7 +191,7 @@ def get_all_ingredients(itemId):
                             httpstatus=500)
 
 @item.route('/item/addIngredient', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainItems")
 def add_ingredient():
   try:
@@ -234,7 +234,7 @@ def add_ingredient():
                             httpstatus=500)
 
 @item.route('/item/updateIngredient', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainItems")
 def update_ingredient():
   try:
@@ -273,7 +273,7 @@ def update_ingredient():
                             httpstatus=500)
 
 @item.route('/item/deleteIngredient', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainItems")
 def delete_ingredient():
   try:
@@ -307,7 +307,7 @@ def delete_ingredient():
                             httpstatus=500)
 
 @item.route('/item/<int:itemId>/varieties', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewItems")
 def get_all_varieties(itemId):
   try:
@@ -322,7 +322,7 @@ def get_all_varieties(itemId):
                             httpstatus=500)
 
 @item.route('/item/addVariety', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainItems")
 def add_variety():
   try:
@@ -361,7 +361,7 @@ def add_variety():
                             httpstatus=500)
 
 @item.route('/item/deleteVariety', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainItems")
 def delete_variety():
   try:

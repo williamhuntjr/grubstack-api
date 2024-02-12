@@ -6,7 +6,7 @@ from flask import Blueprint, url_for, request
 from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import AuthError, requires_auth, requires_permission
+from grubstack.authentication import AuthError, jwt_required, requires_permission
 from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 
 from .menus_utilities import format_menu, getMenus, format_params, format_item_params
@@ -19,7 +19,7 @@ logger = logging.getLogger('grubstack')
 menu_service = MenuService()
 
 @menu.route('/menus', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewMenus")
 def get_all():
   try:
@@ -36,7 +36,7 @@ def get_all():
                             httpstatus=500)
 
 @menu.route('/menu/create', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainMenus")
 def create():
   try:
@@ -74,7 +74,7 @@ def create():
                             httpstatus=500)
 
 @menu.route('/menu/<string:menu_id>', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewMenus")
 def get(menu_id: int, showVarieties: bool = False):
   try:
@@ -95,7 +95,7 @@ def get(menu_id: int, showVarieties: bool = False):
                             httpstatus=500)
 
 @menu.route('/menu/delete', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainMenus")
 def delete():
   try:
@@ -126,7 +126,7 @@ def delete():
                             httpstatus=500)
 
 @menu.route('/menu/update', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainMenus")
 def update():
   try:
@@ -162,7 +162,7 @@ def update():
                             httpstatus=500)
 
 @menu.route('/menu/<int:menuId>/items', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewMenus")
 def get_all_items(menuId: int):
   try:
@@ -186,7 +186,7 @@ def get_all_items(menuId: int):
                             httpstatus=500)
 
 @menu.route('/menu/addItem', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainMenus")
 def add_item():
   try:
@@ -231,7 +231,7 @@ def add_item():
                             httpstatus=500)
 
 @menu.route('/menu/deleteItem', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainMenus")
 def delete_item():
   try:
@@ -265,7 +265,7 @@ def delete_item():
                             httpstatus=500)
 
 @menu.route('/menu/updateItem', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainMenus")
 def update_item():
   try:

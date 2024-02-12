@@ -6,7 +6,7 @@ from flask import Blueprint, url_for, request
 from grubstack import app, config, gsdb, gsprod
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
-from grubstack.authentication import requires_auth, requires_permission
+from grubstack.authentication import jwt_required, requires_permission
 from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 from grubstack.application.modules.products.menus.menus_service import MenuService
 
@@ -21,7 +21,7 @@ store_service = StoreService()
 menu_service = MenuService()
 
 @store.route('/stores', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewStores")
 def get_all():
   try:
@@ -38,7 +38,7 @@ def get_all():
                             httpstatus=500)
 
 @store.route('/store/create', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainStores")
 def create():
   try:
@@ -91,7 +91,7 @@ def create():
                             httpstatus=500)
 
 @store.route('/store/<int:store_id>', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("ViewStores")
 def get(store_id: int):
   try:
@@ -112,7 +112,7 @@ def get(store_id: int):
                             httpstatus=500)
 
 @store.route('/store/delete', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainStores")
 def delete():
   try:
@@ -143,7 +143,7 @@ def delete():
                             httpstatus=500)
 
 @store.route('/store/update', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainStores")
 def update():
   try:
@@ -180,7 +180,7 @@ def update():
                             httpstatus=500)
 
 @store.route('/store/<int:store_id>/menus', methods=['GET'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainStores")
 def get_all_menus(store_id: int):
   try:
@@ -204,7 +204,7 @@ def get_all_menus(store_id: int):
                             httpstatus=500)
 
 @store.route('/store/addMenu', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainStores")
 def add_menu():
   try:
@@ -249,7 +249,7 @@ def add_menu():
                             httpstatus=500)
 
 @store.route('/store/deleteMenu', methods=['POST'])
-@requires_auth
+@jwt_required()
 @requires_permission("MaintainStores")
 def delete_menu():
   try:

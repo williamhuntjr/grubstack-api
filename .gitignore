@@ -5,3 +5,4 @@ grubstack.ini
 *.sock
 *.env*
 *.pyc.*
+*.log.*
