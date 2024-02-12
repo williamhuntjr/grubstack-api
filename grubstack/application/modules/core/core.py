@@ -30,9 +30,9 @@ def get_versions():
 @jwt_required()
 def update_apps():
   try:
-    products = gsprod.fetchall("SELECT app_id, app_url, c.tenant_id, c.product_id, p.is_front_end_app, p.product_name, p.product_description FROM gs_tenant_app c INNER JOIN gs_product p on p.product_id = c.product_id WHERE c.tenant_id = %s", (app.config['TENANT_ID'],))
+    products = gsprod.fetchall("SELECT app_id, app_url, c.tenant_id, c.product_id, p.is_front_end_app, p.name, p.description FROM gs_tenant_app c INNER JOIN gs_product p on p.product_id = c.product_id WHERE c.tenant_id = %s", (app.config['TENANT_ID'],))
 
-    access_token = request.cookies.get('access_token_cookie') or request.headers['Authorization'].split(None, 1)[1].strip()
+    access_token = request.cookies.get('access_token_cookie')
 
     for product in products:
       if product['product_name'] != 'GrubStack API':
