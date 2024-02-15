@@ -19,7 +19,7 @@ from flask_jwt_extended import (
   decode_token,
   unset_jwt_cookies,
   set_access_cookies,
-  set_refresh_cookies,
+  set_refresh_cookies
 )
 
 from . import app, config, logger, gsprod, gsdb, jwt
@@ -191,7 +191,6 @@ def user_identity_lookup(user: GSUser) -> str:
 
 @jwt.user_lookup_loader
 def user_loader(header: dict, identity: dict) -> GSUser:
-  print(identity['sub'])
   return fetch_user(identity['sub'])
 
 @jwt.invalid_token_loader
@@ -276,7 +275,7 @@ def whoami() -> Response:
           permissions.append(permission['name'])
 
     else:
-      row = gsprod.fetchall("SELECT f.permission_id, name FROM gs_user_permission f LEFT JOIN gs_permission i USING (permission_id) WHERE f.user_id = %s and f.tenant_id = %s ORDER BY name ASC", (json_data['sub'], app.config['TENANT_ID'],))
+      row = gsprod.fetchall("SELECT f.permission_id, name FROM gs_user_permission f LEFT JOIN gs_permission i USING (permission_id) WHERE f.user_id = %s and f.tenant_id = %s ORDER BY name ASC", (get_jwt_identity(), app.config['TENANT_ID'],))
       if row != None:
         for permission in row:
           permissions.append(permission['name'])
