@@ -63,7 +63,7 @@ def create():
                                 headers=headers,
                                 data=menu)
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -116,7 +116,7 @@ def delete():
           return gs_make_response(message=f'Menu #{menu_id} deleted')
           
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -151,7 +151,7 @@ def update():
                     headers=headers)
 
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -221,7 +221,7 @@ def add_item():
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -255,7 +255,7 @@ def delete_item():
           return gs_make_response(message=f'Item #{item_id} deleted from menu')
           
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -287,7 +287,7 @@ def update_item():
           return gs_make_response(message=f'Item #{item_id} updated on menu')
         
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:

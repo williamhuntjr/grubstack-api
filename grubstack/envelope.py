@@ -39,7 +39,7 @@ class GRequest(dict):
     if 'data' not in pdict:
       raise ValueError('Missing data object')
     if type(pdict['data']) != type(dict()) and type(pdict['data']) != type(list()):
-      raise TypeError('Invalid data object. Must be a JSON Object or Array')
+      raise TypeError('Invalid request object. Must be a JSON Object or Array')
     return GRequest(
       pdict['data'],
       pdict.get('options')

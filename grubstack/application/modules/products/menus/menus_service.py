@@ -65,7 +65,7 @@ class MenuService:
     return gsdb.execute("""INSERT INTO gs_menu 
                         (tenant_id, menu_id, name, description, thumbnail_url, label_color)
                         VALUES
-                        (%s, DEFAULT, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url, label_color,))
+                        (%s, DEFAULT, %s, %s, %s, %s)""", (app.config['TENANT_ID'], name, description, thumbnail_url, label_color,))
 
   def delete(self, menu_id: int):
     gsdb.execute("DELETE FROM gs_menu WHERE menu_id = %s", (menu_id,))
@@ -92,7 +92,7 @@ class MenuService:
     return gsdb.execute("""INSERT INTO gs_menu_item 
                                   (tenant_id, menu_id, item_id, price, sale_price, is_onsale)
                                   VALUES 
-                                  (%s, %s, %s, %s, %s, %s)""", (app.config["TENANT_ID"], menu_id, item_id, price, sale_price, is_onsale,))
+                                  (%s, %s, %s, %s, %s, %s)""", (app.config['TENANT_ID'], menu_id, item_id, price, sale_price, is_onsale,))
 
   def delete_item(self, menu_id: int, item_id: int):
     gsdb.execute("DELETE FROM gs_menu_item WHERE menu_id = %s AND item_id = %s", (menu_id, item_id,))

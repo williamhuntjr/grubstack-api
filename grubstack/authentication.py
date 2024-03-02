@@ -1,5 +1,4 @@
 import json, requests, time
-
 from datetime import datetime
 
 from six.moves.urllib.request import urlopen
@@ -22,13 +21,11 @@ from flask_jwt_extended import (
   set_refresh_cookies
 )
 
-from . import app, config, logger, gsprod, gsdb, jwt
-
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.user import GSUser
 
-ALGORITHMS = ["RS256"]
+from . import app, config, logger, gsprod, gsdb, jwt
 
 authentication = Blueprint('auth', __name__)
 

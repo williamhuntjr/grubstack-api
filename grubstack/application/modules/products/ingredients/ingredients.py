@@ -55,7 +55,7 @@ def create():
                                 (tenant_id, ingredient_id, name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price)
                                 VALUES
                                 (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
-                            """, (app.config["TENANT_ID"], name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price,))
+                            """, (app.config['TENANT_ID'], name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price,))
           row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('ingredient.get', ingredient_id=row['ingredient_id'])}
@@ -64,7 +64,7 @@ def create():
                                 headers=headers,
                                 data=row)
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -119,7 +119,7 @@ def delete():
           return gs_make_response(message=f'Ingredient #{ingredient_id} deleted')
           
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -157,7 +157,7 @@ def update():
                     data=json_data)
 
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 

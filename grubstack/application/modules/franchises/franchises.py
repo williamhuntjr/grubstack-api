@@ -1,9 +1,8 @@
 import logging, json
 
-from math import ceil
 from flask import Blueprint, url_for, request
 
-from grubstack import app, config, gsdb, gsprod
+from grubstack import app, config
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import jwt_required, requires_permission
@@ -37,7 +36,7 @@ def get_all():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchise/create', methods=['POST'])
+@franchise.route('/franchises', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainFranchises")
 def create():
@@ -50,15 +49,15 @@ def create():
       count = franchise_service.get_franchise_count()
       limit = franchise_service.get_franchise_limit()
 
-      if count >= limit:
+      if count >= limit and limit != -1:
         return gs_make_response(message='Unable to create franchise. Your subscription limit has been reached.',
                         status=GStatusCode.ERROR,
-                        httpstatus=401)
+                        httpstatus=400)
 
       if name:
         franchise = franchise_service.search(name)
 
-        if franchise:
+        if franchise is not None:
           return gs_make_response(message='That franchise already exists. Try a different name',
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
@@ -78,7 +77,7 @@ def create():
                             httpstatus=500)
 
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -88,7 +87,7 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchise/<int:franchise_id>', methods=['GET'])
+@franchise.route('/franchises/<int:franchise_id>', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewFranchises")
 def get(franchise_id: int):
@@ -108,37 +107,29 @@ def get(franchise_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchise/delete', methods=['POST'])
+@franchise.route('/franchises/<int:franchise_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainFranchises")
-def delete():
+def delete(franchise_id: int):
   try:
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      franchise_id = params['franchise_id']
+    franchise = franchise_service.get(franchise_id)
 
-      if franchise_id:
-        franchise = franchise_service.get(franchise_id)
-        if franchise is None:
-          return gs_make_response(message='Franchise not found',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=404)
-        else:
-          franchise_service.delete(franchise_id)
-          return gs_make_response(message=f'Franchise #{franchise_id} deleted')
+    if franchise is None:
+      return gs_make_response(message='Franchise not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+
+    else:
+      franchise_service.delete(franchise_id)
+      return gs_make_response(message=f'Franchise #{franchise_id} deleted')
           
-      else:
-        return gs_make_response(message='Invalid data',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchise/update', methods=['POST'])
+@franchise.route('/franchises', methods=['PUT'])
 @jwt_required()
 @requires_permission("MaintainFranchises")
 def update():
@@ -164,7 +155,7 @@ def update():
                     headers=headers)
 
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -174,7 +165,7 @@ def update():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchise/<int:franchise_id>/stores', methods=['GET'])
+@franchise.route('/franchises/<int:franchise_id>/stores', methods=['GET'])
 @jwt_required()
 @requires_permission("MaintainFranchises")
 def get_all_stores(franchise_id: int):
@@ -198,15 +189,14 @@ def get_all_stores(franchise_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchise/addStore', methods=['POST'])
+@franchise.route('/franchises/<int:franchise_id>/stores', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainFranchises")
-def add_store():
+def add_store(franchise_id: int):
   try:
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      franchise_id = params['franchise_id']
       store_id = params['store_id']
 
       if franchise_id is not None and store_id is not None:
@@ -235,7 +225,7 @@ def add_store():
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -244,32 +234,21 @@ def add_store():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchise/deleteStore', methods=['POST'])
+@franchise.route('/franchises/<int:franchise_id>/stores/<int:store_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainFranchises")
-def delete_store():
+def delete_store(franchise_id: int, store_id: int):
   try:
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      franchise_id = params['franchise_id']
-      store_id = params['store_id']
+    is_existing = franchise_service.store_exists(franchise_id, store_id)
 
-      if franchise_id and store_id:
-        is_existing = franchise_service.store_exists(franchise_id, store_id)
-
-        if is_existing is None:
-          return gs_make_response(message='Invalid franchise store',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=404)
-        else:
-          franchise_service.delete_store(franchise_id, store_id)
-          return gs_make_response(message=f'Store #{store_id} deleted from franchise')
-           
-      else:
-        return gs_make_response(message='Invalid data',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
+    if is_existing is None:
+      return gs_make_response(message='Invalid franchise store',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+    else:
+      franchise_service.delete_store(franchise_id, store_id)
+      return gs_make_response(message=f'Store #{store_id} deleted from franchise')
+        
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',

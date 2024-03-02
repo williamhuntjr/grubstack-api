@@ -1,5 +1,4 @@
-from math import ceil
-from pypika import Query, Table, Order, functions
+from pypika import Query, Table, Order, functions, Parameter, Tables
 
 from grubstack import app, gsdb, gsprod
 from grubstack.application.modules.stores.stores_utilities import format_store
@@ -25,9 +24,7 @@ class FranchiseService:
           menus_list = []
 
           if 'showMenus' in filters and filters['showMenus']:
-            menus = gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url, label_color
-                                    FROM gs_menu c INNER JOIN gs_store_menu p ON p.menu_id = c.menu_id 
-                                    WHERE p.store_id = %s ORDER BY name ASC""", (store['store_id'],))
+            menus = self.get_store_menus(store['store_id'])
 
             for menu in menus:
               menus_list.append(format_menu(menu))
@@ -37,16 +34,17 @@ class FranchiseService:
     return format_franchise(franchise, stores_list, filters)
 
   def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
+    gs_franchise = Table('gs_franchise')
     qry = Query.from_(
-      'gs_franchise'
+      gs_franchise
     ).select(
       '*'
     ).orderby(
-      'name',
+      gs_franchise.name,
       order=Order.asc
     )
     
-    franchises = gsdb.fetchall(str(qry),)
+    franchises = gsdb.fetchall(str(qry))
 
     filtered = []
     for franchise in franchises:
@@ -59,21 +57,29 @@ class FranchiseService:
   def get(self, franchise_id: int, filters: list = []):
     stores_list = []
 
-    table = Table('gs_franchise')
-    qry = Query.from_('gs_franchise').select('*').where(table.franchise_id == franchise_id)
-
-    franchise = gsdb.fetchone(str(qry))
-    filtered_data = self.apply_filters(franchise, filters)
-    return filtered_data
-
-  def search(self, franchise_name: str):
-    table = Table('gs_franchise')
+    gs_franchise = Table('gs_franchise')
     qry = Query.from_(
-      'gs_franchise'
+      gs_franchise
     ).select(
       '*'
     ).where(
-      table.name == franchise_name
+      gs_franchise.franchise_id == franchise_id
+    )
+
+    franchise = gsdb.fetchone(str(qry))
+
+    filtered_data = self.apply_filters(franchise, filters)
+
+    return filtered_data
+
+  def search(self, franchise_name: str):
+    gs_franchise = Table('gs_franchise')
+    qry = Query.from_(
+      gs_franchise
+    ).select(
+      '*'
+    ).where(
+      gs_franchise.name == franchise_name
     )
     
     franchise = gsdb.fetchone(str(qry))
@@ -81,51 +87,153 @@ class FranchiseService:
     if franchise != None:
       return format_franchise(franchise)
 
-    return
+    return None
 
   def create(self, params: tuple = ()):
     name, description, thumbnail_url = params
-    return gsdb.execute("""INSERT INTO gs_franchise 
-                      (tenant_id, franchise_id, name, description, thumbnail_url) 
-                      VALUES 
-                      (%s, DEFAULT, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url))
+
+    gs_franchise = Table('gs_franchise')
+    qry = Query.into(
+      gs_franchise
+    ).columns(
+      gs_franchise.tenant_id,
+      gs_franchise.name,
+      gs_franchise.description,
+      gs_franchise.thumbnail_url
+    ).insert(
+      app.config['TENANT_ID'],
+      Parameter('%s'),
+      Parameter('%s'),
+      Parameter('%s'),
+    )
+    
+    return gsdb.execute(str(qry), (name, description, thumbnail_url))
 
   def update(self, franchise_id: int, params: tuple = ()):
     name, description, thumbnail_url = params
-    return gsdb.execute("UPDATE gs_franchise SET (name, description, thumbnail_url) = (%s, %s, %s) WHERE franchise_id = %s", (name, description, thumbnail_url, franchise_id,))
+
+    gs_franchise = Table('gs_franchise')
+    qry = Query.update(
+      gs_franchise
+    ).set(
+      gs_franchise.name, Parameter('%s')
+    ).set(
+      gs_franchise.description, Parameter('%s')
+    ).set(
+      gs_franchise.thumbnail_url, Parameter('%s')
+    ).where(
+      gs_franchise.franchise_id == Parameter('%s')
+    )
+
+    return gsdb.execute(str(qry), (name, description, thumbnail_url, franchise_id))
 
   def delete(self, franchise_id: int):
-    gsdb.execute("DELETE FROM gs_franchise WHERE franchise_id = %s", (franchise_id,))
-    gsdb.execute("DELETE FROM gs_franchise_store WHERE franchise_id = %s", (franchise_id,))
+    gs_franchise, gs_franchise_store = Tables('gs_franchise', 'gs_franchise_store')
+    qry = Query.from_(
+      gs_franchise
+    ).delete().where(
+      gs_franchise.franchise_id == Parameter('%s')
+    )
 
-  def exists(self, franchise_name: str):
-    table = Table('gs_franchise')
-    qry = Query.from_('gs_franchise').select('*').where(table.name == franchise_name)
-    
-    franchises = gsdb.fetchall(str(qry))
+    gsdb.execute(str(qry), (franchise_id))
 
-    if len(franchises) > 0:
-      return True
+    qry = Query.from_(
+      gs_franchise_store
+    ).delete().where(
+      gs_franchise_store.franchise_id == Parameter('%s')
+    )
     
-    return False
+    gsdb.execute(str(qry), (franchise_id))
 
   def get_stores(self, franchise_id: int):
-    return gsdb.fetchall("""SELECT c.store_id, name, address1, city, state, postal, store_type, thumbnail_url, phone_number
-                              FROM gs_store c INNER JOIN gs_franchise_store p ON p.store_id = c.store_id 
-                              WHERE p.franchise_id = %s ORDER BY name ASC""", (franchise_id,))
+    gs_store, gs_franchise_store = Tables('gs_store', 'gs_franchise_store')
+    qry = Query.from_(
+      gs_franchise_store
+    ).inner_join(
+      gs_store
+    ).on(
+      gs_store.store_id == gs_franchise_store.store_id
+    ).select(
+      gs_franchise_store.store_id,
+      gs_store.name,
+      gs_store.address1,
+      gs_store.city,
+      gs_store.state,
+      gs_store.postal,
+      gs_store.store_type,
+      gs_store.thumbnail_url,
+      gs_store.phone_number
+    ).where(
+      gs_franchise_store.franchise_id == franchise_id
+    ).orderby(
+      gs_store.name, order=Order.asc
+    )
+
+    return gsdb.fetchall(str(qry))
+
+  def get_store_menus(self, store_id: int):
+    gs_menu, gs_store_menu = Tables('gs_menu', 'gs_store_menu')
+    qry = Query.from_(
+      gs_store_menu
+    ).inner_join(
+      gs_menu
+    ).on(
+      gs_menu.menu_id == gs_store_menu.menu_id
+    ).select(
+      gs_store_menu.menu_id,
+      gs_menu.name,
+      gs_menu.description,
+      gs_menu.thumbnail_url,
+      gs_menu.label_color
+    ).where(
+      gs_store_menu.store_id == Parameter('%s')
+    ).orderby(
+      gs_menu.name, order=Order.asc
+    )
+
+    stores = gsdb.fetchall(str(qry), (store_id,))
+
+    return stores
 
   def add_store(self, franchise_id: int, store_id: int):
-    return gsdb.execute("""INSERT INTO gs_franchise_store 
-                            (tenant_id, franchise_id, store_id)
-                            VALUES 
-                            (%s, %s, %s)""", (app.config["TENANT_ID"], franchise_id, store_id,))
+    gs_franchise_store = Table('gs_franchise_store')
+    qry = Query.into(
+      gs_franchise_store
+    ).columns(
+      gs_franchise_store.tenant_id,
+      gs_franchise_store.franchise_id,
+      gs_franchise_store.store_id,
+    ).insert(
+      app.config['TENANT_ID'],
+      Parameter('%s'),
+      Parameter('%s')
+    )
+
+    return gsdb.execute(str(qry), (franchise_id, store_id))
 
   def delete_store(self, franchise_id: int, store_id: int):
-    gsdb.execute("DELETE FROM gs_franchise_store WHERE franchise_id = %s AND store_id = %s", (franchise_id, store_id,))
+    gs_franchise_store = Table('gs_franchise_store')
+    qry = Query.from_(
+      gs_franchise_store
+    ).delete().where(
+      gs_franchise_store.franchise_id == Parameter('%s')
+    ).where(
+      gs_franchise_store.store_id == Parameter('%s')
+    )
+
+    gsdb.execute(str(qry), (franchise_id, store_id))
 
   def store_exists(self, franchise_id: int, store_id: int):
-    table = Table('gs_franchise_store')
-    qry = Query.from_('gs_franchise_store').select('*').where(table.franchise_id == franchise_id).where(table.store_id == store_id)
+    gs_franchise_store = Table('gs_franchise_store')
+    qry = Query.from_(
+      gs_franchise_store
+    ).select(
+      '*'
+    ).where(
+      gs_franchise_store.franchise_id == franchise_id
+    ).where(
+      gs_franchise_store.store_id == store_id
+    )
     
     store = gsdb.fetchone(str(qry))
 
@@ -149,7 +257,12 @@ class FranchiseService:
     return (json_data, total_rows, total_pages)
     
   def get_franchise_count(self):
-    qry = Query.from_('gs_franchise').select(functions.Count('*'))
+    gs_franchise = Table('gs_franchise')
+    qry = Query.from_(
+      gs_franchise
+    ).select(
+      functions.Count('*')
+    )
     result = gsdb.fetchone(str(qry))
 
     if result != None:
@@ -158,8 +271,14 @@ class FranchiseService:
     return 0
 
   def get_franchise_limit(self):
-    table = Table('gs_tenant_feature')
-    qry = Query.from_('gs_tenant_feature').select('franchise_count').where(table.tenant_id == app.config['TENANT_ID'])
+    gs_tenant_feature = Table('gs_tenant_feature')
+    qry = Query.from_(
+      gs_tenant_feature
+    ).select(
+      gs_tenant_feature.franchise_count
+    ).where(
+      gs_tenant_feature.tenant_id == app.config['TENANT_ID']
+    )
     
     result = gsprod.fetchone(str(qry))
 

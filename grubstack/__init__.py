@@ -74,10 +74,10 @@ app.config['MAIL_DEBUG']          = os.environ.get('MAIL_DEBUG') or False
 app.config['JWT_SECRET_KEY'] = config.get('authentication', 'secret', fallback='secret')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = config.getint('authentication', 'access_token_expires', fallback=3600)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = config.getint('authentication', 'refresh_token_expires', fallback=2592000)
-app.config['JWT_TOKEN_LOCATION'] = ["cookies", "headers", "json"]
+app.config['JWT_TOKEN_LOCATION'] = ['cookies', 'headers', 'json']
 app.config['JWT_COOKIE_DOMAIN'] = '.grubstack.app'
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
-app.config["JWT_COOKIE_SECURE"] = True
+app.config['JWT_COOKIE_SECURE'] = True
 app.config['JWT_COOKIE_SAMESITE'] = 'None'
 app.config['JWT_ACCESS_COOKIE_NAME'] = '_grubstack_access_token'
 app.config['JWT_REFRESH_COOKIE_NAME'] = '_grubstack_refresh_token'

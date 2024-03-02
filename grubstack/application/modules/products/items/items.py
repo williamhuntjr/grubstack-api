@@ -55,7 +55,7 @@ def create():
           qry = gsdb.execute("""INSERT INTO gs_item
                                 (tenant_id, item_id, name, description, thumbnail_url, label_color)
                                 VALUES 
-                                (%s, DEFAULT, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, description, thumbnail_url, label_color))
+                                (%s, DEFAULT, %s, %s, %s, %s)""", (app.config['TENANT_ID'], name, description, thumbnail_url, label_color))
           row = gsdb.fetchone("SELECT * FROM gs_item WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('item.get', itemId=row['item_id'])}
@@ -64,7 +64,7 @@ def create():
                                 headers=headers,
                                 data=row)
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -125,7 +125,7 @@ def delete():
           return gs_make_response(message=f'Item #{item_id} deleted')
           
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -163,7 +163,7 @@ def update():
                     data=json_data)
 
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -216,7 +216,7 @@ def add_ingredient():
             qry = gsdb.execute("""INSERT INTO gs_item_ingredient 
                                   (tenant_id, item_id, ingredient_id, is_optional, is_addon, is_extra)
                                   VALUES 
-                                  (%s, %s, %s, 'f', 'f', 'f')""", (app.config["TENANT_ID"], item_id, ingredient_id,))
+                                  (%s, %s, %s, 'f', 'f', 'f')""", (app.config['TENANT_ID'], item_id, ingredient_id,))
             return gs_make_response(message=f'Ingredient #{ingredient_id} added to item')
           else:
             return gs_make_response(message=f'Ingredient already exists on item',
@@ -224,7 +224,7 @@ def add_ingredient():
                                     httpstatus=400)
 
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -263,7 +263,7 @@ def update_ingredient():
             return gs_make_response(message=f'Ingredient #{ingredient_id} updated on item')
           
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -297,7 +297,7 @@ def delete_ingredient():
           return gs_make_response(message=f'Ingredient #{ingredient_id} deleted from item')
           
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -344,14 +344,14 @@ def add_variety():
                                   httpstatus=400)
         else:
           if not is_existing:
-            qry = gsdb.execute("INSERT INTO gs_item_variety VALUES (%s, %s, %s)", (app.config["TENANT_ID"], item_id, variety_id,))
+            qry = gsdb.execute("INSERT INTO gs_item_variety VALUES (%s, %s, %s)", (app.config['TENANT_ID'], item_id, variety_id,))
             return gs_make_response(message=f'Variety #{variety_id} added to item')
           else:
             return gs_make_response(message=f'Variety already exists on item',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -384,7 +384,7 @@ def delete_variety():
           return gs_make_response(message=f'Variety #{variety_id} deleted from item')
           
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:

@@ -1,9 +1,8 @@
 import logging, json
 
-from math import ceil
 from flask import Blueprint, url_for, request
 
-from grubstack import app, config, gsdb, gsprod
+from grubstack import app, config
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import jwt_required, requires_permission
@@ -37,7 +36,7 @@ def get_all():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@store.route('/store/create', methods=['POST'])
+@store.route('/stores', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainStores")
 def create():
@@ -51,10 +50,10 @@ def create():
       count = store_service.get_store_count()
       limit = store_service.get_store_limit()
 
-      if count >= limit:
+      if count >= limit and limit != -1:
         return gs_make_response(message='Unable to create store. Your subscription limit has been reached.',
                         status=GStatusCode.ERROR,
-                        httpstatus=401)
+                        httpstatus=400)
 
       if name:
         store = store_service.search(name, store_type)
@@ -80,7 +79,7 @@ def create():
                             httpstatus=500)
                             
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -90,7 +89,7 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@store.route('/store/<int:store_id>', methods=['GET'])
+@store.route('/stores/<int:store_id>', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewStores")
 def get(store_id: int):
@@ -111,38 +110,29 @@ def get(store_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@store.route('/store/delete', methods=['POST'])
+@store.route('/stores/<int:store_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainStores")
-def delete():
+def delete(store_id: int):
   try:
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      store_id = params['store_id']
+    store = store_service.get(store_id)
 
-      if store_id:
-        store = store_service.get(store_id)
+    if store is None:
+      return gs_make_response(message='Store not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
 
-        if store is None:
-          return gs_make_response(message='Store not found',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=404)
-        else:
-          qry = store_service.delete(store_id)
-          return gs_make_response(message=f'Store #{store_id} deleted')
-          
-      else:
-        return gs_make_response(message='Invalid data',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
+    else:
+      qry = store_service.delete(store_id)
+      return gs_make_response(message=f'Store #{store_id} deleted')
+
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@store.route('/store/update', methods=['POST'])
+@store.route('/stores', methods=['PUT'])
 @jwt_required()
 @requires_permission("MaintainStores")
 def update():
@@ -154,7 +144,6 @@ def update():
       name = params['name']
 
       if store_id and name:
-        # Check if exists
         row = store_service.get(store_id)
 
         if row is None:
@@ -169,7 +158,7 @@ def update():
                     headers=headers)
 
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -179,7 +168,7 @@ def update():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@store.route('/store/<int:store_id>/menus', methods=['GET'])
+@store.route('/stores/<int:store_id>/menus', methods=['GET'])
 @jwt_required()
 @requires_permission("MaintainStores")
 def get_all_menus(store_id: int):
@@ -203,19 +192,17 @@ def get_all_menus(store_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@store.route('/store/addMenu', methods=['POST'])
+@store.route('/stores/<int:store_id>/menus', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainStores")
-def add_menu():
+def add_menu(store_id: int):
   try:
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      store_id = params['store_id']
       menu_id = params['menu_id']
 
       if store_id is not None and menu_id is not None:
-        # Check if exists
         store = store_service.get(store_id)
         menu = menu_service.get(menu_id)
 
@@ -239,7 +226,7 @@ def add_menu():
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
   except Exception as e:
@@ -248,32 +235,21 @@ def add_menu():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@store.route('/store/deleteMenu', methods=['POST'])
+@store.route('/stores/<int:store_id>/menus/<int:menu_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainStores")
-def delete_menu():
+def delete_menu(store_id: int, menu_id: int):
   try:
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      store_id = params['store_id']
-      menu_id = params['menu_id']
+    is_existing = store_service.menu_exists(store_id, menu_id)
 
-      if store_id and menu_id:
-        is_existing = store_service.menu_exists(store_id, menu_id)
+    if is_existing is None:
+      return gs_make_response(message='Invalid store menu',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+    else:
+      store_service.delete_menu(store_id, menu_id)
+      return gs_make_response(message=f'Menu #{menu_id} deleted from store')
 
-        if is_existing is None:
-          return gs_make_response(message='Invalid store menu',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=404)
-        else:
-          store_service.delete_menu(store_id, menu_id)
-          return gs_make_response(message=f'Menu #{menu_id} deleted from store')
-          
-      else:
-        return gs_make_response(message='Invalid data',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',

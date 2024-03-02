@@ -1,34 +1,29 @@
 import logging, json
-from math import ceil
+
 from flask import Blueprint, url_for, request
-from datetime import datetime
-from grubstack import app, config, gsdb
+
+from grubstack import app, config
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import jwt_required, requires_permission
-from .employees_utilities import formatEmployee, getEmployees, formatParams
+from grubstack.application.utilities.filters import create_pagination_params
+
+from .employees_service import EmployeeService
+from .employees_utilities import format_params
 
 employee = Blueprint('employee', __name__)
 logger = logging.getLogger('grubstack')
 
-PER_PAGE = app.config['PER_PAGE']
+employee_service = EmployeeService()
 
 @employee.route('/employees', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewEmployees")
 def get_all():
   try:
-    # Get route parameters
-    page = request.args.get('page')
-    limit = request.args.get('limit')
+    page, limit = create_pagination_params(request.args)
 
-    if limit is None: limit = PER_PAGE
-    else: limit = int(limit)
-
-    if page is None: page = 1
-    else: page = int(page)
-    
-    json_data, total_rows, total_pages = getEmployees(page, limit)
+    json_data, total_rows, total_pages = employee_service.get_all(page, limit)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -38,7 +33,7 @@ def get_all():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@employee.route('/employee/create', methods=['POST'])
+@employee.route('/employees', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainEmployees")
 def create():
@@ -47,30 +42,32 @@ def create():
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title = formatParams(params)
+      first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title = format_params(params)
 
       if first_name and last_name and gender and address1 and city and state and postal:
-        # Check if exists
-        row = gsdb.fetchall("SELECT * from gs_employee WHERE first_name = %s AND last_name = %s", (first_name, last_name,))
-
-        if row is not None and len(row) > 0:
+        employee = employee_service.search(first_name, last_name)
+        
+        if employee is not None:
           return gs_make_response(message='That employee already exists. Try a different first name and last name.',
                                   status=GStatusCode.ERROR,
                                   httpstatus=400)
         else:
-          qry = gsdb.execute("""INSERT INTO gs_employee 
-                                (tenant_id, employee_id, first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title)
-                                VALUES
-                                (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""", (app.config["TENANT_ID"], first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title,))
-          row = gsdb.fetchone("SELECT * FROM gs_employee WHERE first_name = %s AND last_name = %s", (first_name, last_name,))
-          if row is not None and len(row) > 0:
-            headers = {'Location': url_for('employee.get', employee_id=row['employee_id'])}
+          employee_service.create(format_params(params))
+          employee = employee_service.search(first_name, last_name)
+
+          if employee is not None:
+            headers = {'Location': url_for('employee.get', employee_id=employee['id'])}
             return gs_make_response(message=f'Employee {first_name} {last_name} successfully created',
                                 httpstatus=201,
                                 headers=headers,
-                                data=row)
+                                data=employee)
+          else:
+            return gs_make_response(message='Unable to create employee',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 
@@ -80,21 +77,20 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@employee.route('/employee/<string:employee_id>', methods=['GET'])
+@employee.route('/employees/<int:employee_id>', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewEmployees")
 def get(employee_id: int):
   try:
-    json_data = {}
-    if request.json:
-      data = json.loads(request.data)
+    employee = employee_service.get(employee_id)
+    
+    if employee:
+      return gs_make_response(data=employee)
 
-      # Check if exists
-      row = gsdb.fetchone("SELECT * FROM gs_employee WHERE employee_id = %s", (employee_id,))
-      if row: 
-        json_data = formatEmployee(row)
-
-    return gs_make_response(data=json_data)
+    else:
+      return gs_make_response(message='Employee not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
 
   except Exception as e:
     logger.exception(e)
@@ -102,70 +98,54 @@ def get(employee_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@employee.route('/employee/delete', methods=['POST'])
+@employee.route('/employees/<int:employee_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainEmployees")
-def delete():
+def delete(employee_id: int):
   try:
-    json_data = {}
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      employee_id = params['employee_id']
+    employee = employee_service.get(employee_id)
+    
+    if employee is None:
+      return gs_make_response(message='Employee not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+    else:
+      employee_service.delete(employee_id)
+      return gs_make_response(message=f'Employee #{employee_id} deleted')
 
-      if employee_id:
-        # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_employee WHERE employee_id = %s", (employee_id,))
-        if row is None:
-          return gs_make_response(message='Invalid employee',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=400)
-        else:
-          qry = gsdb.execute("DELETE FROM gs_employee WHERE employee_id = %s", (employee_id,))
-          return gs_make_response(message=f'Employee #{employee_id} deleted')
-
-      else:
-        return gs_make_response(message='Invalid data',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@employee.route('/employee/update', methods=['POST'])
+@employee.route('/employees', methods=['PUT'])
 @jwt_required()
 @requires_permission("MaintainEmployees")
 def update():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
       employee_id = params['id']
-      first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title = formatParams(params)
+      first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title = format_params(params)
 
       if employee_id and first_name and last_name and gender and address1 and city and state and postal:
-        # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_employee WHERE employee_id = %s", (employee_id,))
+        employee = employee_service.get(employee_id)
 
-        if row is None:
+        if employee is None:
           return gs_make_response(message=f'Employee {first_name} {last_name} does not exist',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          qry = gsdb.execute("""UPDATE gs_employee SET 
-                                (first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title) = (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
-                                WHERE employee_id = %s""", (first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title, employee_id,))
+          employee_service.update(employee_id, format_params(params))
           headers = {'Location': url_for('employee.get', employee_id=employee_id)}
           return gs_make_response(message=f'Employee {first_name} {last_name} successfully updated',
                     httpstatus=201,
-                    headers=headers,
-                    data=json_data)
+                    headers=headers)
 
       else:
-        return gs_make_response(message='Invalid data',
+        return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
 

@@ -1,5 +1,4 @@
-from math import ceil
-from pypika import Query, Table, Order, functions
+from pypika import Query, Table, Tables, Order, functions, Parameter
 
 from grubstack import app, gsdb, gsprod
 from grubstack.application.modules.products.menus.menus_utilities import format_menu
@@ -8,7 +7,6 @@ from grubstack.application.constants import DEFAULT_STORE_LIMIT
 from grubstack.application.utilities.filters import generate_paginated_data
 
 from .stores_utilities import format_store
-
 from .stores_constants import PER_PAGE
 
 class StoreService:
@@ -26,9 +24,7 @@ class StoreService:
           items_list = []
 
           if 'showItems' in filters and filters['showItems']:
-            items = gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
-                      FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
-                      WHERE p.menu_id = %s ORDER BY name ASC""", (menu['menu_id'],))
+            items = self.get_menu_items(menu['menu_id'])
             
             for item in items:
               items_list.append(formatItem(item))
@@ -38,7 +34,15 @@ class StoreService:
     return format_store(store, menus_list, filters)
 
   def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
-    qry = Query.from_('gs_store').select('*').orderby('name', order=Order.asc)
+    gs_store = Table('gs_store')
+    qry = Query.from_(
+      gs_store
+    ).select(
+      '*'
+    ).orderby(
+      gs_store.name, order=Order.asc
+    )
+
     stores = gsdb.fetchall(str(qry))
 
     filtered = []
@@ -50,41 +54,131 @@ class StoreService:
     return (json_data, total_rows, total_pages)
 
   def get(self, store_id: int, filters: list = []):
-    table = Table('gs_store')
-    qry = Query.from_('gs_store').select('*').where(table.store_id == store_id)
+    gs_store = Table('gs_store')
+    qry = Query.from_(
+      gs_store
+    ).select(
+      '*'
+    ).where(
+      gs_store.store_id == store_id
+    )
 
     store = gsdb.fetchone(str(qry))
-    filtered_data = self.apply_filters(store, filters)
-    return filtered_data
+
+    if store is not None:
+      filtered_data = self.apply_filters(store, filters)
+      return filtered_data
+
+    else:
+      return None
 
   def search(self, store_name: str, store_type: str):
-    table = Table('gs_store')
-    qry = Query.from_('gs_store').select('*').where(table.name == store_name).where(table.store_type == store_type)
+    gs_store = Table('gs_store')
+    qry = Query.from_(
+      gs_store
+    ).select(
+      '*'
+    ).where(
+      gs_store.name == store_name
+    ).where(
+      gs_store.store_type == store_type
+    )
     
     store = gsdb.fetchone(str(qry))
+
     if store:
       return format_store(store)
     
-    return
+    else:
+      return None
 
   def create(self, params: dict = ()):
     name, address1, city, state, postal, store_type, thumbnail_url, phone_number = params
-    return gsdb.execute("""INSERT INTO gs_store 
-                      (tenant_id, store_id, name, address1, city, state, postal, store_type, thumbnail_url, phone_number) 
-                      VALUES 
-                      (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s)""", (app.config["TENANT_ID"], name, address1, city, state, postal, store_type, thumbnail_url, phone_number))
+
+    gs_store = Table('gs_store')
+    qry = Query.into(
+      gs_store
+    ).columns(
+      gs_store.tenant_id,
+      gs_store.name,
+      gs_store.address1,
+      gs_store.city,
+      gs_store.state,
+      gs_store.postal,
+      gs_store.store_type,
+      gs_store.thumbnail_url,
+      gs_store.phone_number
+    ).insert(
+      app.config['TENANT_ID'],
+      Parameter('%s'),
+      Parameter('%s'),
+      Parameter('%s'),
+      Parameter('%s'),
+      Parameter('%s'),
+      Parameter('%s'),
+      Parameter('%s'),
+      Parameter('%s'),
+    )
+
+    return gsdb.execute(str(qry), (name, address1, city, state, postal, store_type, thumbnail_url, phone_number))
 
   def update(self, store_id: int, params: dict = ()):
     name, address1, city, state, postal, store_type, thumbnail_url, phone_number = params
-    return gsdb.execute("UPDATE gs_store SET (name, address1, city, state, postal, store_type, thumbnail_url, phone_number) = (%s, %s, %s, %s, %s, %s, %s, %s) WHERE store_id = %s", (name, address1, city, state, postal, store_type, thumbnail_url, phone_number, store_id,))
+
+    gs_store = Table('gs_store')
+    qry = Query.update(
+      gs_store
+    ).set(
+      gs_store.name, Parameter('%s')
+    ).set(
+      gs_store.address1, Parameter('%s')
+    ).set(
+      gs_store.city, Parameter('%s')
+    ).set(
+      gs_store.state, Parameter('%s')
+    ).set(
+      gs_store.postal, Parameter('%s')
+    ).set(
+      gs_store.store_type, Parameter('%s')
+    ).set(
+      gs_store.thumbnail_url, Parameter('%s')
+    ).set(
+      gs_store.phone_number, Parameter('%s')
+    ).where(
+      gs_store.store_id == Parameter('%s')
+    )
+
+    return gsdb.execute(str(qry), (name, address1, city, state, postal, store_type, thumbnail_url, phone_number, store_id))
   
   def delete(self, store_id: int):
-    gsdb.execute("DELETE FROM gs_store WHERE store_id = %s", (store_id,))
-    gsdb.execute("DELETE FROM gs_store_menu WHERE store_id = %s", (store_id,))
+    gs_store, gs_store_menu = Tables('gs_store', 'gs_store_menu')
+    qry = Query.from_(
+      gs_store
+    ).delete().where(
+      gs_store.store_id == Parameter('%s')
+    )
+
+    gsdb.execute(str(qry), (store_id))
+
+    qry = Query.from_(
+      gs_store_menu
+    ).delete().where(
+      gs_store_menu.store_id == Parameter('%s')
+    )
+    
+    gsdb.execute(str(qry), (store_id))
 
   def exists(self, store_name: str, store_type: str):
-    table = Table('gs_store')
-    qry = Query.from_('gs_store').select('*').where(table.name == store_name).where(table.store_type == store_type)
+    gs_store = Table('gs_store')
+    qry = Query.from_(
+      gs_store
+    ).select(
+      '*'
+    ).where(
+      gs_store.name == store_name
+    ).where(
+      gs_store.store_type == store_type
+    )
     
     stores = gsdb.fetchall(str(qry))
 
@@ -94,22 +188,94 @@ class StoreService:
     return False
 
   def get_menus(self, store_id: int):
-    return gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url, label_color
-                                    FROM gs_menu c INNER JOIN gs_store_menu p ON p.menu_id = c.menu_id 
-                                    WHERE p.store_id = %s ORDER BY name ASC""", (store_id,))
+    gs_menu, gs_store_menu = Tables('gs_menu', 'gs_store_menu')
+    qry = Query.from_(
+      gs_store_menu
+    ).inner_join(
+      gs_menu
+    ).on(
+      gs_menu.menu_id == gs_store_menu.menu_id
+    ).select(
+      gs_store_menu.menu_id,
+      gs_menu.name,
+      gs_menu.description,
+      gs_menu.thumbnail_url,
+      gs_menu.label_color
+    ).where(
+      gs_store_menu.store_id == store_id
+    ).orderby(
+      gs_menu.name, order=Order.asc
+    )
+
+    return gsdb.fetchall(str(qry), (store_id,))
+
+  def get_menu_items(self, menu_id: int):
+    gs_item, gs_menu_item = Tables('gs_item', 'gs_menu_item')
+    qry = Query.from_(
+      gs_menu_item
+    ).inner_join(
+      gs_item
+    ).on(
+      gs_item.item_id == gs_menu_item.item_id
+    ).select(
+      gs_menu_item.menu_id,
+      gs_menu_item.item_id,
+      gs_menu_item.price,
+      gs_menu_item.sale_price,
+      gs_menu_item.is_onsale,
+      gs_item.name,
+      gs_item.description,
+      gs_item.thumbnail_url,
+      gs_item.label_color,
+    ).where(
+      gs_menu_item.item_id == Parameter('%s')
+    ).orderby(
+      gs_item.name, order=Order.asc
+    )
+
+    items = gsdb.fetchall(str(qry), (menu_id,))
+
+    return items
 
   def add_menu(self, store_id: int, menu_id: int):
-    return gsdb.execute("""INSERT INTO gs_store_menu 
-                                  (tenant_id, store_id, menu_id)
-                                  VALUES 
-                                  (%s, %s, %s)""", (app.config["TENANT_ID"], store_id, menu_id,))
+    gs_store_menu = Table('gs_store_menu')
+    qry = Query.into(
+      gs_store_menu
+    ).columns(
+      gs_store_menu.tenant_id,
+      gs_store_menu.store_id,
+      gs_store_menu.menu_id
+    ).insert(
+      app.config['TENANT_ID'],
+      Parameter('%s'),
+      Parameter('%s')
+    )
+
+    gsdb.execute(str(qry), (store_id, menu_id))
 
   def delete_menu(self, store_id: int, menu_id: int):
-    gsdb.execute("DELETE FROM gs_store_menu WHERE store_id = %s AND menu_id = %s", (store_id, menu_id,))
+    gs_store_menu = Table('gs_store_menu')
+    qry = Query.from_(
+      gs_store_menu
+    ).delete().where(
+      gs_store_menu.store_id == Parameter('%s')
+    ).where(
+      gs_store_menu.menu_id == Parameter('%s')
+    )
+
+    gsdb.execute(str(qry), (store_id, menu_id))
 
   def menu_exists(self, store_id: int, menu_id: int):
-    table = Table('gs_store_menu')
-    qry = Query.from_('gs_store_menu').select('*').where(table.store_id == store_id).where(table.menu_id == menu_id)
+    gs_store_menu = Table('gs_store_menu')
+    qry = Query.from_(
+      gs_store_menu
+    ).select(
+      '*'
+    ).where(
+      gs_store_menu.store_id == store_id
+    ).where(
+      gs_store_menu.menu_id == menu_id
+    )
     
     store = gsdb.fetchone(str(qry))
 
@@ -132,7 +298,13 @@ class StoreService:
     return (json_data, total_rows, total_pages)
     
   def get_store_count(self):
-    qry = Query.from_('gs_store').select(functions.Count('*'))
+    gs_store = Table('gs_store')
+    qry = Query.from_(
+      gs_store
+    ).select(
+      functions.Count('*')
+    )
+
     result = gsdb.fetchone(str(qry))
 
     if result != None:
@@ -141,8 +313,14 @@ class StoreService:
     return 0
 
   def get_store_limit(self):
-    table = Table('gs_tenant_feature')
-    qry = Query.from_('gs_tenant_feature').select('store_count').where(table.tenant_id == app.config['TENANT_ID'])
+    gs_tenant_feature = Table('gs_tenant_feature')
+    qry = Query.from_(
+      gs_tenant_feature
+    ).select(
+      gs_tenant_feature.store_count
+    ).where(
+      gs_tenant_feature.tenant_id == app.config['TENANT_ID']
+    )
     
     result = gsprod.fetchone(str(qry))
 
