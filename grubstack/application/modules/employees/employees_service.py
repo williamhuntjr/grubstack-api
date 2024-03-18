@@ -82,7 +82,7 @@ class EmployeeService:
       Parameter('%s'),
     )
     
-    return gsdb.execute(str(qry), (first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title))
+    return gsdb.execute(str(qry), (first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title,))
 
   def update(self, employee_id: int, params: tuple = ()):
     first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title = params
@@ -120,7 +120,7 @@ class EmployeeService:
       gs_employee.employee_id == Parameter('%s')
     )
 
-    return gsdb.execute(str(qry), (first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title, employee_id))
+    return gsdb.execute(str(qry), (first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title, employee_id,))
 
   def delete(self, employee_id: int):
     gs_employee = Table('gs_employee')
@@ -144,7 +144,7 @@ class EmployeeService:
       gs_employee.last_name == Parameter('%s')
     )
 
-    employee = gsdb.fetchone(str(qry), (first_name, last_name))
+    employee = gsdb.fetchone(str(qry), (first_name, last_name,))
 
     if employee is not None:
       return format_employee(employee)

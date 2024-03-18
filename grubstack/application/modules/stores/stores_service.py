@@ -120,7 +120,7 @@ class StoreService:
       Parameter('%s'),
     )
 
-    return gsdb.execute(str(qry), (name, address1, city, state, postal, store_type, thumbnail_url, phone_number))
+    return gsdb.execute(str(qry), (name, address1, city, state, postal, store_type, thumbnail_url, phone_number,))
 
   def update(self, store_id: int, params: dict = ()):
     name, address1, city, state, postal, store_type, thumbnail_url, phone_number = params
@@ -148,7 +148,7 @@ class StoreService:
       gs_store.store_id == Parameter('%s')
     )
 
-    return gsdb.execute(str(qry), (name, address1, city, state, postal, store_type, thumbnail_url, phone_number, store_id))
+    return gsdb.execute(str(qry), (name, address1, city, state, postal, store_type, thumbnail_url, phone_number, store_id,))
   
   def delete(self, store_id: int):
     gs_store, gs_store_menu = Tables('gs_store', 'gs_store_menu')
@@ -158,7 +158,7 @@ class StoreService:
       gs_store.store_id == Parameter('%s')
     )
 
-    gsdb.execute(str(qry), (store_id))
+    gsdb.execute(str(qry), (store_id,))
 
     qry = Query.from_(
       gs_store_menu
@@ -166,7 +166,7 @@ class StoreService:
       gs_store_menu.store_id == Parameter('%s')
     )
     
-    gsdb.execute(str(qry), (store_id))
+    gsdb.execute(str(qry), (store_id,))
 
   def exists(self, store_name: str, store_type: str):
     gs_store = Table('gs_store')
@@ -251,7 +251,7 @@ class StoreService:
       Parameter('%s')
     )
 
-    gsdb.execute(str(qry), (store_id, menu_id))
+    gsdb.execute(str(qry), (store_id, menu_id,))
 
   def delete_menu(self, store_id: int, menu_id: int):
     gs_store_menu = Table('gs_store_menu')
@@ -263,7 +263,7 @@ class StoreService:
       gs_store_menu.menu_id == Parameter('%s')
     )
 
-    gsdb.execute(str(qry), (store_id, menu_id))
+    gsdb.execute(str(qry), (store_id, menu_id,))
 
   def menu_exists(self, store_id: int, menu_id: int):
     gs_store_menu = Table('gs_store_menu')

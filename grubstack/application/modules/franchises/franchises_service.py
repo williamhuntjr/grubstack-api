@@ -107,7 +107,7 @@ class FranchiseService:
       Parameter('%s'),
     )
     
-    return gsdb.execute(str(qry), (name, description, thumbnail_url))
+    return gsdb.execute(str(qry), (name, description, thumbnail_url,))
 
   def update(self, franchise_id: int, params: tuple = ()):
     name, description, thumbnail_url = params
@@ -125,7 +125,7 @@ class FranchiseService:
       gs_franchise.franchise_id == Parameter('%s')
     )
 
-    return gsdb.execute(str(qry), (name, description, thumbnail_url, franchise_id))
+    return gsdb.execute(str(qry), (name, description, thumbnail_url, franchise_id,))
 
   def delete(self, franchise_id: int):
     gs_franchise, gs_franchise_store = Tables('gs_franchise', 'gs_franchise_store')
@@ -135,7 +135,7 @@ class FranchiseService:
       gs_franchise.franchise_id == Parameter('%s')
     )
 
-    gsdb.execute(str(qry), (franchise_id))
+    gsdb.execute(str(qry), (franchise_id,))
 
     qry = Query.from_(
       gs_franchise_store
@@ -143,7 +143,7 @@ class FranchiseService:
       gs_franchise_store.franchise_id == Parameter('%s')
     )
     
-    gsdb.execute(str(qry), (franchise_id))
+    gsdb.execute(str(qry), (franchise_id,))
 
   def get_stores(self, franchise_id: int):
     gs_store, gs_franchise_store = Tables('gs_store', 'gs_franchise_store')
@@ -209,7 +209,7 @@ class FranchiseService:
       Parameter('%s')
     )
 
-    return gsdb.execute(str(qry), (franchise_id, store_id))
+    return gsdb.execute(str(qry), (franchise_id, store_id,))
 
   def delete_store(self, franchise_id: int, store_id: int):
     gs_franchise_store = Table('gs_franchise_store')
@@ -221,7 +221,7 @@ class FranchiseService:
       gs_franchise_store.store_id == Parameter('%s')
     )
 
-    gsdb.execute(str(qry), (franchise_id, store_id))
+    gsdb.execute(str(qry), (franchise_id, store_id,))
 
   def store_exists(self, franchise_id: int, store_id: int):
     gs_franchise_store = Table('gs_franchise_store')
