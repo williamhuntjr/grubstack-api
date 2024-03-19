@@ -24,8 +24,9 @@ class StoreService:
           items_list = []
 
           if 'showItems' in filters and filters['showItems']:
+            print("TEST")
             items = self.get_menu_items(menu['menu_id'])
-            
+            print(items)
             for item in items:
               items_list.append(formatItem(item))
 
@@ -210,6 +211,7 @@ class StoreService:
     return gsdb.fetchall(str(qry), (store_id,))
 
   def get_menu_items(self, menu_id: int):
+    print("TEST2")
     gs_item, gs_menu_item = Tables('gs_item', 'gs_menu_item')
     qry = Query.from_(
       gs_menu_item
@@ -228,11 +230,10 @@ class StoreService:
       gs_item.thumbnail_url,
       gs_item.label_color,
     ).where(
-      gs_menu_item.item_id == Parameter('%s')
+      gs_menu_item.menu_id == Parameter('%s')
     ).orderby(
       gs_item.name, order=Order.asc
     )
-
     items = gsdb.fetchall(str(qry), (menu_id,))
 
     return items
