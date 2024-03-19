@@ -67,11 +67,11 @@ def getMenus(page: int = 1, limit: int = PER_PAGE):
 
   return (json_data, total_rows, total_pages)
 
-def getMenuItems(menuId, page: int = 1, limit: int = PER_PAGE):
+def getMenuItems(menu_id, page: int = 1, limit: int = PER_PAGE):
   json_data = []
   items = gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
                                   FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
-                                  WHERE p.menu_id = %s ORDER BY name ASC""", (menuId,))
+                                  WHERE p.menu_id = %s ORDER BY name ASC""", (menu_id,))
 
   items_list = []
   for item in items:

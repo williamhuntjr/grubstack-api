@@ -40,11 +40,11 @@ def getVarieties(page: int = 1, limit: int = PER_PAGE):
 
   return (json_data, total_rows, total_pages)
 
-def getVarietyIngredients(varietyId, page: int = 1, limit: int = PER_PAGE):
+def getVarietyIngredients(variety_id, page: int = 1, limit: int = PER_PAGE):
   json_data = []
   ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber
                                   FROM gs_ingredient c INNER JOIN gs_variety_ingredient p ON p.ingredient_id = c.ingredient_id 
-                                  WHERE p.variety_id = %s ORDER BY name ASC""", (varietyId,))
+                                  WHERE p.variety_id = %s ORDER BY name ASC""", (variety_id,))
 
   ingredients_list = []
   for ingredient in ingredients:

@@ -35,7 +35,7 @@ def get_all():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/create', methods=['POST'])
+@menu.route('/menus', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainMenus")
 def create():
@@ -73,7 +73,7 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/<string:menu_id>', methods=['GET'])
+@menu.route('/menus/<string:menu_id>', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewMenus")
 def get(menu_id: int, showVarieties: bool = False):
@@ -94,38 +94,28 @@ def get(menu_id: int, showVarieties: bool = False):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/delete', methods=['POST'])
+@menu.route('/menus/<string:menu_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainMenus")
-def delete():
+def delete(menu_id: str):
   try:
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      menu_id = params['menu_id']
+    menu = menu_service.get(menu_id)
 
-      if menu_id:
-        menu = menu_service.get(menu_id)
+    if menu is None:
+      return gs_make_response(message='Menu not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+    else:
+      menu_service.delete(menu_id)
+      return gs_make_response(message=f'Menu #{menu_id} deleted')
 
-        if menu is None:
-          return gs_make_response(message='Menu not found',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=404)
-        else:
-          menu_service.delete(menu_id)
-          return gs_make_response(message=f'Menu #{menu_id} deleted')
-          
-      else:
-        return gs_make_response(message='Invalid request',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/update', methods=['POST'])
+@menu.route('/menus', methods=['PUT'])
 @jwt_required()
 @requires_permission("MaintainMenus")
 def update():
@@ -161,12 +151,12 @@ def update():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/<int:menuId>/items', methods=['GET'])
+@menu.route('/menu/<int:menu_id>/items', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewMenus")
-def get_all_items(menuId: int):
+def get_all_items(menu_id: int):
   try:
-    menu = menu_service.get(menuId)
+    menu = menu_service.get(menu_id)
 
     if menu is None:
       return gs_make_response(message='Menu not found',
@@ -175,7 +165,7 @@ def get_all_items(menuId: int):
                               
     page, limit = create_pagination_params(request.args)
 
-    json_data, total_rows, total_pages = menu_service.get_items_paginated(menuId, page, limit)
+    json_data, total_rows, total_pages = menu_service.get_items_paginated(menu_id, page, limit)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -185,19 +175,17 @@ def get_all_items(menuId: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/addItem', methods=['POST'])
+@menu.route('/menus/<string:menu_id>/items', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainMenus")
-def add_item():
+def add_item(menu_id: str):
   try:
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      menu_id = params['menu_id']
       item_id = params['item_id']
 
       if menu_id is not None and item_id is not None:
-        # Check if exists
         menu = menu_service.get(menu_id)
         item = gsdb.fetchone("SELECT * FROM gs_item WHERE item_id = %s", (item_id,))
 
@@ -230,50 +218,35 @@ def add_item():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/deleteItem', methods=['POST'])
+@menu.route('/menus/<string:menu_id>/items/<string:item_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainMenus")
-def delete_item():
+def delete_item(menu_id: str, item_id: str):
   try:
-    json_data = {}
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      menu_id = params['menu_id']
-      item_id = params['item_id']
+    is_existing = menu_service.item_exists(menu_id, item_id)
 
-      if menu_id and item_id:
-        is_existing = menu_service.item_exists(menu_id, item_id)
-
-        if is_existing is None:
-          return gs_make_response(message='Invalid menu item',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=404)
-
-        else:
-          menu_service.delete_item(menu_id, item_id)
-          return gs_make_response(message=f'Item #{item_id} deleted from menu')
-          
-      else:
-        return gs_make_response(message='Invalid request',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
+    if is_existing is None:
+      return gs_make_response(message='Invalid menu item',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+    else:
+      menu_service.delete_item(menu_id, item_id)
+      return gs_make_response(message=f'Item #{item_id} deleted from menu')
+      
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/updateItem', methods=['POST'])
+@menu.route('/menus/<string:menu_id>/items/<string:item_id>', methods=['PUT'])
 @jwt_required()
 @requires_permission("MaintainMenus")
-def update_item():
+def update_item(menu_id: str, item_id: str):
   try:
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      menu_id = params['menu_id']
-      item_id = params['item_id']
 
       if menu_id is not None and item_id:
         is_existing = menu_service.item_exists(menu_id, item_id)

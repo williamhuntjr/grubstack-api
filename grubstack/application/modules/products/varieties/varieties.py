@@ -172,13 +172,13 @@ def update():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@variety.route('/variety/<int:varietyId>', methods=['GET'])
+@variety.route('/variety/<int:variety_id>', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewVarieties")
-def get_variety(varietyId):
+def get_variety(variety_id):
   try:
     json_data = {}
-    row = gsdb.fetchone("""SELECT variety_id, name, description, thumbnail_url, label_color FROM gs_variety WHERE variety_id = %s""", (varietyId,))
+    row = gsdb.fetchone("""SELECT variety_id, name, description, thumbnail_url, label_color FROM gs_variety WHERE variety_id = %s""", (variety_id,))
     if variety:
       json_data = formatVariety(row)
       return gs_make_response(data=json_data)
@@ -193,10 +193,10 @@ def get_variety(varietyId):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@variety.route('/variety/<int:varietyId>/ingredients', methods=['GET'])
+@variety.route('/variety/<int:variety_id>/ingredients', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewVarieties")
-def get_all_ingredients(varietyId):
+def get_all_ingredients(variety_id):
   try:
     # Get route parameters
     page = request.args.get('page')
@@ -208,7 +208,7 @@ def get_all_ingredients(varietyId):
     if page is None: page = 1
     else: page = int(page)
 
-    json_data, total_rows, total_pages = getVarietyIngredients(varietyId, page, limit)
+    json_data, total_rows, total_pages = getVarietyIngredients(variety_id, page, limit)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 

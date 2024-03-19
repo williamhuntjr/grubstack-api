@@ -29,10 +29,10 @@ def formatParams(params: dict):
 
   return (name, description, thumbnail_url, label_color)
 
-def getAllItemIngredients(itemId):
+def getAllItemIngredients(item_id):
   ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber, price, is_optional, is_addon, is_extra
                                 FROM gs_ingredient c INNER JOIN gs_item_ingredient p ON p.ingredient_id = c.ingredient_id 
-                                WHERE p.item_id = %s ORDER BY name ASC""", (itemId,))
+                                WHERE p.item_id = %s ORDER BY name ASC""", (item_id,))
   ingredients_list = []
   for ingredient in ingredients:
     ingredients_list.append({
@@ -58,10 +58,10 @@ def getAllItemIngredients(itemId):
     })
   return ingredients_list
 
-def getAllItemVarieties(itemId):
+def getAllItemVarieties(item_id):
   varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url, label_color
                       FROM gs_variety c INNER JOIN gs_item_variety p ON p.variety_id = c.variety_id 
-                      WHERE p.item_id = %s ORDER BY name ASC""", (itemId,))
+                      WHERE p.item_id = %s ORDER BY name ASC""", (item_id,))
   varieties_list = []
   for variety in varieties:
     varieties_list.append({
@@ -96,9 +96,9 @@ def getItems(page: int = 1, limit: int = PER_PAGE):
 
   return (json_data, total_rows, total_pages)
 
-def getItemIngredients(itemId, page: int = 1, limit: int = PER_PAGE):
+def getItemIngredients(item_id, page: int = 1, limit: int = PER_PAGE):
   json_data = []
-  ingredients = getAllItemIngredients(itemId)
+  ingredients = getAllItemIngredients(item_id)
 
   # Calculate paged data
   offset = page - 1

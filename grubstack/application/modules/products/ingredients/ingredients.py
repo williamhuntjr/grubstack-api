@@ -30,7 +30,7 @@ def get_all():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@ingredient.route('/ingredient/create', methods=['POST'])
+@ingredient.route('/ingredients', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainIngredients")
 def create():
@@ -43,7 +43,6 @@ def create():
       name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price = formatParams(params)
       
       if name:
-        # Check if exists
         row = gsdb.fetchall("SELECT * from gs_ingredient WHERE name = %s", (name,))
 
         if row is not None and len(row) > 0:
@@ -74,7 +73,7 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@ingredient.route('/ingredient/<string:ingredient_id>', methods=['GET'])
+@ingredient.route('/ingredients/<string:ingredient_id>', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewIngredients")
 def get(ingredient_id: int):
@@ -83,7 +82,6 @@ def get(ingredient_id: int):
     if request.json:
       data = json.loads(request.data)
 
-      # Check if exists
       row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
       if row: 
         json_data = formatIngredient(row)
@@ -96,39 +94,27 @@ def get(ingredient_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@ingredient.route('/ingredient/delete', methods=['POST'])
+@ingredient.route('/ingredients/<string:ingredient_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainIngredients")
-def delete():
+def delete(ingredient_id: str):
   try:
-    json_data = {}
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      ingredient_id = params['ingredient_id']
-
-      if ingredient_id:
-        # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
-        if row is None:
-          return gs_make_response(message='Invalid ingredient',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=400)
-        else:
-          qry = gsdb.execute("DELETE FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
-          return gs_make_response(message=f'Ingredient #{ingredient_id} deleted')
-          
-      else:
-        return gs_make_response(message='Invalid request',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
+    row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
+    if row is None:
+      return gs_make_response(message='Invalid ingredient',
+                              status=GStatusCode.ERROR,
+                              httpstatus=400)
+    else:
+      qry = gsdb.execute("DELETE FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
+      return gs_make_response(message=f'Ingredient #{ingredient_id} deleted')
+      
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@ingredient.route('/ingredient/update', methods=['POST'])
+@ingredient.route('/ingredients', methods=['PUT'])
 @jwt_required()
 @requires_permission("MaintainIngredients")
 def update():
