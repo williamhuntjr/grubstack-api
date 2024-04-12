@@ -37,7 +37,7 @@ def update_apps():
     for product in products:
       if product['name'] != 'GrubStack API':
         url = 'https://api.grubstack.app/v1/products/app/restart'
-        data = {"app_id": product['app_id']}
+        data = {"app_id": product['app_id'], "tenant_id": app.config['TENANT_ID'] }
         headers = {
           'Authorization': 'Bearer ' + access_token,
           'Content-Type': 'application/json'
