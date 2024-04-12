@@ -42,7 +42,7 @@ def update_apps():
           'Authorization': 'Bearer ' + access_token,
           'Content-Type': 'application/json'
         }
-        resp = requests.post(url, json=data, headers=headers, verify=False)
+        resp = requests.post(url, json=data, headers=headers)
 
     return gs_make_response(message='Apps updated successfully')
 
