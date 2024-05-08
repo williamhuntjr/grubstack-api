@@ -1,7 +1,7 @@
 from pypika import Query, Table, Order, functions, Parameter, Tables
 
 from grubstack import app, gsdb, gsprod
-from grubstack.application.modules.stores.stores_utilities import format_store
+from grubstack.application.modules.restaurants.restaurants_utilities import format_restaurant
 from grubstack.application.modules.products.menus.menus_utilities import format_menu
 from grubstack.application.constants import DEFAULT_FRANCHISE_LIMIT
 from grubstack.application.utilities.filters import generate_paginated_data
@@ -14,24 +14,24 @@ class FranchiseService:
     pass
 
   def apply_filters(self, franchise, filters: list = []):
-    stores_list = []
+    restaurants_list = []
 
-    if 'showStores' in filters and filters['showStores']:
-      stores = self.get_stores(franchise['franchise_id'])
+    if 'showRestaurants' in filters and filters['showRestaurants']:
+      restaurants = self.get_restaurants(franchise['franchise_id'])
 
-      if stores != None:
-        for store in stores:
+      if restaurants != None:
+        for restaurant in restaurants:
           menus_list = []
 
           if 'showMenus' in filters and filters['showMenus']:
-            menus = self.get_store_menus(store['store_id'])
+            menus = self.get_restaurant_menus(restaurant['restaurant_id'])
 
             for menu in menus:
               menus_list.append(format_menu(menu))
 
-          stores_list.append(format_store(store, menus_list, filters))
+          restaurants_list.append(format_restaurant(restaurant, menus_list, filters))
 
-    return format_franchise(franchise, stores_list, filters)
+    return format_franchise(franchise, restaurants_list, filters)
 
   def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
     gs_franchise = Table('gs_franchise')
@@ -55,7 +55,7 @@ class FranchiseService:
     return (json_data, total_rows, total_pages)
 
   def get(self, franchise_id: int, filters: list = []):
-    stores_list = []
+    restaurants_list = []
 
     gs_franchise = Table('gs_franchise')
     qry = Query.from_(
@@ -128,7 +128,7 @@ class FranchiseService:
     return gsdb.execute(str(qry), (name, description, thumbnail_url, franchise_id,))
 
   def delete(self, franchise_id: int):
-    gs_franchise, gs_franchise_store = Tables('gs_franchise', 'gs_franchise_store')
+    gs_franchise, gs_franchise_restaurant = Tables('gs_franchise', 'gs_franchise_restaurant')
     qry = Query.from_(
       gs_franchise
     ).delete().where(
@@ -138,121 +138,121 @@ class FranchiseService:
     gsdb.execute(str(qry), (franchise_id,))
 
     qry = Query.from_(
-      gs_franchise_store
+      gs_franchise_restaurant
     ).delete().where(
-      gs_franchise_store.franchise_id == Parameter('%s')
+      gs_franchise_restaurant.franchise_id == Parameter('%s')
     )
     
     gsdb.execute(str(qry), (franchise_id,))
 
-  def get_stores(self, franchise_id: int):
-    gs_store, gs_franchise_store = Tables('gs_store', 'gs_franchise_store')
+  def get_restaurants(self, franchise_id: int):
+    gs_restaurant, gs_franchise_restaurant = Tables('gs_restaurant', 'gs_franchise_restaurant')
     qry = Query.from_(
-      gs_franchise_store
+      gs_franchise_restaurant
     ).inner_join(
-      gs_store
+      gs_restaurant
     ).on(
-      gs_store.store_id == gs_franchise_store.store_id
+      gs_restaurant.restaurant_id == gs_franchise_restaurant.restaurant_id
     ).select(
-      gs_franchise_store.store_id,
-      gs_store.name,
-      gs_store.address1,
-      gs_store.city,
-      gs_store.state,
-      gs_store.postal,
-      gs_store.store_type,
-      gs_store.thumbnail_url,
-      gs_store.phone_number
+      gs_franchise_restaurant.restaurant_id,
+      gs_restaurant.name,
+      gs_restaurant.address1,
+      gs_restaurant.city,
+      gs_restaurant.state,
+      gs_restaurant.postal,
+      gs_restaurant.restaurant_type,
+      gs_restaurant.thumbnail_url,
+      gs_restaurant.phone_number
     ).where(
-      gs_franchise_store.franchise_id == franchise_id
+      gs_franchise_restaurant.franchise_id == franchise_id
     ).orderby(
-      gs_store.name, order=Order.asc
+      gs_restaurant.name, order=Order.asc
     )
 
     return gsdb.fetchall(str(qry))
 
-  def get_store_menus(self, store_id: int):
-    gs_menu, gs_store_menu = Tables('gs_menu', 'gs_store_menu')
+  def get_restaurant_menus(self, restaurant_id: int):
+    gs_menu, gs_restaurant_menu = Tables('gs_menu', 'gs_restaurant_menu')
     qry = Query.from_(
-      gs_store_menu
+      gs_restaurant_menu
     ).inner_join(
       gs_menu
     ).on(
-      gs_menu.menu_id == gs_store_menu.menu_id
+      gs_menu.menu_id == gs_restaurant_menu.menu_id
     ).select(
-      gs_store_menu.menu_id,
+      gs_restaurant_menu.menu_id,
       gs_menu.name,
       gs_menu.description,
       gs_menu.thumbnail_url,
       gs_menu.label_color
     ).where(
-      gs_store_menu.store_id == Parameter('%s')
+      gs_restaurant_menu.restaurant_id == Parameter('%s')
     ).orderby(
       gs_menu.name, order=Order.asc
     )
 
-    stores = gsdb.fetchall(str(qry), (store_id,))
+    restaurants = gsdb.fetchall(str(qry), (restaurant_id,))
 
-    return stores
+    return restaurants
 
-  def add_store(self, franchise_id: int, store_id: int):
-    gs_franchise_store = Table('gs_franchise_store')
+  def add_restaurant(self, franchise_id: int, restaurant_id: int):
+    gs_franchise_restaurant = Table('gs_franchise_restaurant')
     qry = Query.into(
-      gs_franchise_store
+      gs_franchise_restaurant
     ).columns(
-      gs_franchise_store.tenant_id,
-      gs_franchise_store.franchise_id,
-      gs_franchise_store.store_id,
+      gs_franchise_restaurant.tenant_id,
+      gs_franchise_restaurant.franchise_id,
+      gs_franchise_restaurant.restaurant_id,
     ).insert(
       app.config['TENANT_ID'],
       Parameter('%s'),
       Parameter('%s')
     )
 
-    return gsdb.execute(str(qry), (franchise_id, store_id,))
+    return gsdb.execute(str(qry), (franchise_id, restaurant_id,))
 
-  def delete_store(self, franchise_id: int, store_id: int):
-    gs_franchise_store = Table('gs_franchise_store')
+  def delete_restaurant(self, franchise_id: int, restaurant_id: int):
+    gs_franchise_restaurant = Table('gs_franchise_restaurant')
     qry = Query.from_(
-      gs_franchise_store
+      gs_franchise_restaurant
     ).delete().where(
-      gs_franchise_store.franchise_id == Parameter('%s')
+      gs_franchise_restaurant.franchise_id == Parameter('%s')
     ).where(
-      gs_franchise_store.store_id == Parameter('%s')
+      gs_franchise_restaurant.restaurant_id == Parameter('%s')
     )
 
-    gsdb.execute(str(qry), (franchise_id, store_id,))
+    gsdb.execute(str(qry), (franchise_id, restaurant_id,))
 
-  def store_exists(self, franchise_id: int, store_id: int):
-    gs_franchise_store = Table('gs_franchise_store')
+  def restaurant_exists(self, franchise_id: int, restaurant_id: int):
+    gs_franchise_restaurant = Table('gs_franchise_restaurant')
     qry = Query.from_(
-      gs_franchise_store
+      gs_franchise_restaurant
     ).select(
       '*'
     ).where(
-      gs_franchise_store.franchise_id == franchise_id
+      gs_franchise_restaurant.franchise_id == franchise_id
     ).where(
-      gs_franchise_store.store_id == store_id
+      gs_franchise_restaurant.restaurant_id == restaurant_id
     )
     
-    store = gsdb.fetchone(str(qry))
+    restaurant = gsdb.fetchone(str(qry))
 
-    if store is not None:
+    if restaurant is not None:
       return True
     
     return False
 
-  def get_stores_paginated(self, franchise_id: int, page: int = 1, limit: int = PER_PAGE):
+  def get_restaurants_paginated(self, franchise_id: int, page: int = 1, limit: int = PER_PAGE):
     json_data = []
-    stores_list = []
+    restaurants_list = []
 
-    stores = self.get_stores(franchise_id)
+    restaurants = self.get_restaurants(franchise_id)
     
-    if stores != None:
-      for store in stores:
-        stores_list.append(format_store(store))
+    if restaurants != None:
+      for restaurant in restaurants:
+        restaurants_list.append(format_restaurant(restaurant))
 
-    json_data, total_rows, total_pages = generate_paginated_data(stores_list, page, limit)
+    json_data, total_rows, total_pages = generate_paginated_data(restaurants_list, page, limit)
 
     return (json_data, total_rows, total_pages)
     

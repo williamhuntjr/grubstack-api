@@ -32,6 +32,19 @@ def format_item_params(params: dict):
   
   return (price, sale_price, is_onsale)
 
+def format_menu_item(item: dict):
+  json_data = {
+    "id": item['item_id'],
+    "name": item['name'],
+    "description": item['description'],
+    "thumbnail_url": item['thumbnail_url'],
+    "label_color": item['label_color'],
+    "price": item['price'],
+    "sale_price": item['sale_price'],
+    "is_onsale": item['is_onsale']
+  }
+  return json_data
+
 def getMenus(page: int = 1, limit: int = PER_PAGE):
   json_data = []
   menus = gsdb.fetchall("SELECT * FROM gs_menu ORDER BY name ASC")

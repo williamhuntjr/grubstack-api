@@ -7,7 +7,7 @@ from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import jwt_required, requires_permission
 from grubstack.application.utilities.filters import generate_filters, create_pagination_params
-from grubstack.application.modules.stores.stores_service import StoreService
+from grubstack.application.modules.restaurants.restaurants_service import RestaurantService
 
 from .franchises_utilities import format_params
 from .franchises_constants import DEFAULT_FILTERS, FRANCHISE_FILTERS, PER_PAGE
@@ -17,7 +17,7 @@ franchise = Blueprint('franchise', __name__)
 logger = logging.getLogger('grubstack')
 
 franchise_service = FranchiseService()
-store_service = StoreService()
+restaurant_service = RestaurantService()
 
 @franchise.route('/franchises', methods=['GET'])
 @jwt_required()
@@ -165,10 +165,10 @@ def update():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchises/<int:franchise_id>/stores', methods=['GET'])
+@franchise.route('/franchises/<int:franchise_id>/restaurants', methods=['GET'])
 @jwt_required()
 @requires_permission("MaintainFranchises")
-def get_all_stores(franchise_id: int):
+def get_all_restaurants(franchise_id: int):
   try:
     franchise = franchise_service.get(franchise_id, DEFAULT_FILTERS)
 
@@ -179,49 +179,49 @@ def get_all_stores(franchise_id: int):
 
     page, limit = create_pagination_params(request.args)
 
-    json_data, total_rows, total_pages = franchise_service.get_stores_paginated(franchise_id, page, limit)
+    json_data, total_rows, total_pages = franchise_service.get_restaurants_paginated(franchise_id, page, limit)
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
   except Exception as e:
     logger.exception(e)
-    return gs_make_response(message='Unable to retrieve stores. Please try again',
+    return gs_make_response(message='Unable to retrieve restaurants. Please try again',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchises/<int:franchise_id>/stores', methods=['POST'])
+@franchise.route('/franchises/<int:franchise_id>/restaurants', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainFranchises")
-def add_store(franchise_id: int):
+def add_restaurant(franchise_id: int):
   try:
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      store_id = params['store_id']
+      restaurant_id = params['restaurant_id']
 
-      if franchise_id is not None and store_id is not None:
+      if franchise_id is not None and restaurant_id is not None:
         franchise = franchise_service.get(franchise_id)
-        store = store_service.get(store_id)
+        restaurant = restaurant_service.get(restaurant_id)
 
-        is_existing = franchise_service.store_exists(franchise_id, store_id)
+        is_existing = franchise_service.restaurant_exists(franchise_id, restaurant_id)
         
         if franchise is None:
           return gs_make_response(message='Franchise not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
 
-        if store is None:
-          return gs_make_response(message='Store not found',
+        if restaurant is None:
+          return gs_make_response(message='Restaurant not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
 
         else:
           if not is_existing:
-            franchise_service.add_store(franchise_id, store_id)
-            return gs_make_response(message=f'Store #{store_id} added to franchise', httpstatus=201)
+            franchise_service.add_restaurant(franchise_id, restaurant_id)
+            return gs_make_response(message=f'Restaurant #{restaurant_id} added to franchise', httpstatus=201)
 
           else:
-            return gs_make_response(message=f'Store already exists on franchise',
+            return gs_make_response(message=f'Restaurant already exists on franchise',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:
@@ -234,20 +234,20 @@ def add_store(franchise_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@franchise.route('/franchises/<int:franchise_id>/stores/<int:store_id>', methods=['DELETE'])
+@franchise.route('/franchises/<int:franchise_id>/restaurants/<int:restaurant_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainFranchises")
-def delete_store(franchise_id: int, store_id: int):
+def delete_restaurant(franchise_id: int, restaurant_id: int):
   try:
-    is_existing = franchise_service.store_exists(franchise_id, store_id)
+    is_existing = franchise_service.restaurant_exists(franchise_id, restaurant_id)
 
     if is_existing is None:
-      return gs_make_response(message='Invalid franchise store',
+      return gs_make_response(message='Invalid franchise restaurant',
                               status=GStatusCode.ERROR,
                               httpstatus=404)
     else:
-      franchise_service.delete_store(franchise_id, store_id)
-      return gs_make_response(message=f'Store #{store_id} deleted from franchise')
+      franchise_service.delete_restaurant(franchise_id, restaurant_id)
+      return gs_make_response(message=f'Restaurant #{restaurant_id} deleted from franchise')
         
   except Exception as e:
     logger.exception(e)

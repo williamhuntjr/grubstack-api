@@ -82,6 +82,14 @@ class MenuService:
     
     return False
 
+  def get_item(self, menu_id: int, item_id: int):
+    item = gsdb.fetchone("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
+                  FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
+                  WHERE p.menu_id = %s AND c.item_id = %s ORDER BY name ASC""", (menu_id, item_id,))
+    if item:
+      return formatItem(item)
+    return None
+
   def get_items(self, menu_id: int):
     return gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
                       FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
@@ -105,9 +113,9 @@ class MenuService:
     table = Table('gs_menu_item')
     qry = Query.from_('gs_menu_item').select('*').where(table.menu_id == menu_id).where(table.item_id == item_id)
     
-    store = gsdb.fetchone(str(qry))
+    restaurant = gsdb.fetchone(str(qry))
 
-    if store is not None:
+    if restaurant is not None:
       return True
     
     return False

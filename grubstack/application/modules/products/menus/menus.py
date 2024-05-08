@@ -151,7 +151,7 @@ def update():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@menu.route('/menu/<int:menu_id>/items', methods=['GET'])
+@menu.route('/menu/<string:menu_id>/items', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewMenus")
 def get_all_items(menu_id: int):
@@ -212,6 +212,27 @@ def add_item(menu_id: str):
         return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Error processing request',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
+@menu.route('/menus/<string:menu_id>/items/<string:item_id>', methods=['GET'])
+@jwt_required()
+@requires_permission("ViewMenus")
+def get_item(menu_id: str, item_id: str):
+  try:
+    item = menu_service.get_item(menu_id, item_id)
+
+    if item:
+      return gs_make_response(data=item)
+
+    else:
+      return gs_make_response(message='Item not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',

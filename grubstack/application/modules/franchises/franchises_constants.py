@@ -1,9 +1,9 @@
 from grubstack import app
 
 PER_PAGE = app.config['PER_PAGE']
-FRANCHISE_FILTERS = ['showStores', 'showMenus']
+FRANCHISE_FILTERS = ['showRestaurants', 'showMenus']
 
 DEFAULT_FILTERS = {
-  "showStores": True,
+  "showRestaurants": True,
   "showMenus": True,
 }

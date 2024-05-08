@@ -148,7 +148,7 @@ def requires_permission(*expected_args):
           return gs_make_response(message='Forbidden',
                           status=GStatusCode.ERROR,
                           httpstatus=403)
-        permissions = ['ViewFranchises', 'ViewStores', 'ViewMenus', 'ViewItems']
+        permissions = ['ViewFranchises', 'ViewLocations', 'ViewMenus', 'ViewItems']
         for expected_arg in expected_args:
           if expected_arg in permissions:
             return func(*args, **kwargs)

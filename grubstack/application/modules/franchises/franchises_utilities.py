@@ -1,14 +1,14 @@
 from grubstack import app
 
-def format_franchise(franchise: dict, stores_list: list = [], filters: list = []):
+def format_franchise(franchise: dict, restaurants_list: list = [], filters: list = []):
   json_data = {
     "id": franchise['franchise_id'],
     "name": franchise['name'],
     "description": franchise['description'],
     "thumbnail_url": franchise['thumbnail_url']
   }
-  if 'showStores' in filters and filters['showStores']:
-    json_data['stores'] = stores_list
+  if 'showRestaurants' in filters and filters['showRestaurants']:
+    json_data['restaurants'] = restaurants_list
 
   return json_data
   

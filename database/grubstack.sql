@@ -74,24 +74,38 @@ ALTER TABLE public.gs_franchise OWNER TO grubstack;
 CREATE TABLE public.gs_franchise_store (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
     franchise_id integer NOT NULL,
-    store_id integer NOT NULL
+    restaurant_id integer NOT NULL
 );
 ALTER TABLE public.gs_franchise_store OWNER TO grubstack;
 
-CREATE TABLE public.gs_store ( 
+CREATE TABLE public.gs_restaurant_location (
+    tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
+    restaurant_id integer NOT NULL,
+    location_id integer NOT NULL
+);
+ALTER TABLE public.gs_restaurant_location OWNER TO grubstack;
+
+CREATE TABLE public.gs_restaurant_location ( 
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
-    store_id SERIAL PRIMARY KEY NOT NULL,                                                                                                 
-    name character varying(64) NOT NULL,                                                                                                                 
+    restaurant_location_id SERIAL PRIMARY KEY NOT NULL,  
+    restaurant_id integer NOT NULL,                                                                                                                                                                                                
     address1 character varying(255) NOT NULL,                                                                                                             
     city character varying(64) NOT NULL,                                                                                                
     state character varying(64) NOT NULL,                                                                                               
     postal character varying(32) NOT NULL,                                                                                              
-    store_type character varying(32) NOT NULL,                                                                                                           
-    thumbnail_url text,
-    phone_number character varying(32) NOT NULL                                                                                                        
+    location_type character varying(32) NOT NULL,                                                                                                           
+    phone_number character varying(32) NOT NULL,
+    create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP                                                                                                 
 );                                                                                                                             
-ALTER TABLE public.gs_store OWNER TO grubstack;                                                                                
+ALTER TABLE public.gs_restaurant_location OWNER TO grubstack;                                                                                
 
+CREATE TABLE public.gs_restaurant ( 
+    tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
+    restaurant_id SERIAL PRIMARY KEY NOT NULL,                                                                                                 
+    name character varying(64) NOT NULL,
+    thumbnail_url text
+);
+ALTER TABLE public.gs_restaurant OWNER TO grubstack;
 
 CREATE TABLE public.gs_ingredient (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
@@ -212,30 +226,32 @@ CREATE TABLE public.gs_employee (
 );
 ALTER TABLE public.gs_employee OWNER TO grubstack;
 
-CREATE TABLE public.gs_store_employee (
+CREATE TABLE public.gs_restaurant_employee (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,                                                                                                
-    store_id integer NOT NULL,
+    restaurant_id integer NOT NULL,
     employee_id integer NOT NULL
 );
-ALTER TABLE public.gs_store_employee OWNER TO grubstack;
+ALTER TABLE public.gs_restaurant_employee OWNER TO grubstack;
 
-CREATE TABLE public.gs_store_menu (
+CREATE TABLE public.gs_restaurant_menu (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
-    store_id integer NOT NULL,
+    restaurant_id integer NOT NULL,
     menu_id integer NOT NULL
 );
-ALTER TABLE public.gs_store_menu OWNER TO grubstack;
+ALTER TABLE public.gs_restaurant_menu OWNER TO grubstack;
 
 ALTER TABLE gs_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_permission ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gs_store ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_restaurant ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_restaurant_location ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_franchise ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_franchise_store ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_ingredient ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_menu ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_menu_item ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_restaurant_location ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_item ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_item_ingredient ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_item_variety ENABLE ROW LEVEL SECURITY;
@@ -243,13 +259,14 @@ ALTER TABLE gs_variety ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety_ingredient ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_media_library ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_employee ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gs_store_employee ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gs_store_menu ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_restaurant_employee ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_restaurant_menu ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE gs_log FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_permission FORCE ROW LEVEL SECURITY;
-ALTER TABLE gs_store FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_restaurant FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_restaurant_location FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_franchise FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_franchise_store FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_ingredient FORCE ROW LEVEL SECURITY;
@@ -263,13 +280,14 @@ ALTER TABLE gs_variety FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_variety_ingredient FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_media_library FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_employee FORCE ROW LEVEL SECURITY;
-ALTER TABLE gs_store_employee FORCE ROW LEVEL SECURITY;
-ALTER TABLE gs_store_menu FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_restaurant_employee FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_restaurant_menu FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_policy ON gs_log USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_user_role USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_user_permission USING (tenant_id = current_setting('app.tenant_id')::UUID);
-CREATE POLICY tenant_isolation_policy ON gs_store USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_restaurant USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_restaurant_location USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_franchise USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_franchise_store USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_ingredient USING (tenant_id = current_setting('app.tenant_id')::UUID);
@@ -282,11 +300,11 @@ CREATE POLICY tenant_isolation_policy ON gs_variety USING (tenant_id = current_s
 CREATE POLICY tenant_isolation_policy ON gs_variety_ingredient USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_media_library USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_employee USING (tenant_id = current_setting('app.tenant_id')::UUID);
-CREATE POLICY tenant_isolation_policy ON gs_store_employee USING (tenant_id = current_setting('app.tenant_id')::UUID);
-CREATE POLICY tenant_isolation_policy ON gs_store_menu USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_restaurant_employee USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_restaurant_menu USING (tenant_id = current_setting('app.tenant_id')::UUID);
 
-INSERT INTO gs_permission VALUES (1, 'ViewStores', 'Allow user to view stores');
-INSERT INTO gs_permission VALUES (2, 'MaintainStores', 'Allow user to to add, delete, and update stores');
+INSERT INTO gs_permission VALUES (1, 'ViewRestaurants', 'Allow user to view stores');
+INSERT INTO gs_permission VALUES (2, 'MaintainRestaurants', 'Allow user to to add, delete, and update stores');
 INSERT INTO gs_permission VALUES (3, 'ViewMenus', 'Allow user to view menus');
 INSERT INTO gs_permission VALUES (4, 'MaintainMenus', 'Allow user to to add, delete, and update menus');
 INSERT INTO gs_permission VALUES (5, 'ViewItems', 'Allow user to view items');
