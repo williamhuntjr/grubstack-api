@@ -9,16 +9,14 @@ def formatVariety(variety: dict):
     "name": variety['name'],
     "description": variety['description'],
     "thumbnail_url": variety['thumbnail_url'],
-    "label_color": variety['label_color'],
   }
 
 def formatParams(params: dict):
   name = params['name']
   description = params['description'] or ''
   thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
-  label_color = params['label_color'] or 'blue'
 
-  return (name, description, thumbnail_url, label_color)
+  return (name, description, thumbnail_url)
 
 def getVarieties(page: int = 1, limit: int = PER_PAGE):
   json_data = []
@@ -42,7 +40,7 @@ def getVarieties(page: int = 1, limit: int = PER_PAGE):
 
 def getVarietyIngredients(variety_id, page: int = 1, limit: int = PER_PAGE):
   json_data = []
-  ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber
+  ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber
                                   FROM gs_ingredient c INNER JOIN gs_variety_ingredient p ON p.ingredient_id = c.ingredient_id 
                                   WHERE p.variety_id = %s ORDER BY name ASC""", (variety_id,))
 
@@ -53,7 +51,6 @@ def getVarietyIngredients(variety_id, page: int = 1, limit: int = PER_PAGE):
       "name": ingredient['name'],
       "description": ingredient['description'],
       "thumbnail_url": ingredient['thumbnail_url'],
-      "label_color": ingredient['label_color'],
       "calories": ingredient['calories'],
       "fat": ingredient['fat'],
       "saturated_fat": ingredient['saturated_fat'],

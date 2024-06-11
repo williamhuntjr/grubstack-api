@@ -1,5 +1,7 @@
 from grubstack import app
 
+PER_PAGE = app.config['PER_PAGE']
+
 DEFAULT_LOCATION_LIMIT = 1
 REQUIRED_FIELDS = [
   'name',
@@ -10,9 +12,9 @@ REQUIRED_FIELDS = [
   'location_type',
   'phone_number'
 ]
-PER_PAGE = app.config['PER_PAGE']
-LOCATION_FILTERS = ['showMenus']
+LOCATION_FILTERS = ['showMenus', 'showItems', 'isActive']
 DEFAULT_FILTERS = {
-  'showMenus': True,
-  'showItems': True
+  'showMenus': False,
+  'showItems': False,
+  'isActive': True
 }

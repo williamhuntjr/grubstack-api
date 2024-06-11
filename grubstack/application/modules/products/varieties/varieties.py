@@ -46,7 +46,7 @@ def create():
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      name, description, thumbnail_url, label_color = formatParams(params)
+      name, description, thumbnail_url = formatParams(params)
 
       if name:
         # Check if exists
@@ -58,9 +58,9 @@ def create():
                                   httpstatus=400)
         else:
           qry = gsdb.execute("""INSERT INTO gs_variety
-                                (tenant_id, variety_id, name, description, thumbnail_url, label_color)
+                                (tenant_id, variety_id, name, description, thumbnail_url)
                                 VALUES 
-                                (%s, DEFAULT, %s, %s, %s, %s)""", (app.config['TENANT_ID'], name, description, thumbnail_url, label_color,))
+                                (%s, DEFAULT, %s, %s, %s)""", (app.config['TENANT_ID'], name, description, thumbnail_url,))
           row = gsdb.fetchone("SELECT * FROM gs_variety WHERE name = %s", (name,))
           if row is not None and len(row) > 0:
             headers = {'Location': url_for('variety.get', variety_id=row['variety_id'])}
@@ -143,7 +143,7 @@ def update():
       data = json.loads(request.data)
       params = data['params']
       variety_id = params['id']
-      name, description, thumbnail_url, label_color = formatParams(params)
+      name, description, thumbnail_url = formatParams(params)
 
       if variety_id and name and description and thumbnail_url:
         # Check if exists
@@ -154,7 +154,7 @@ def update():
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          qry = gsdb.execute("UPDATE gs_variety SET (name, description, thumbnail_url, label_color) = (%s, %s, %s, %s) WHERE variety_id = %s", (name, description, thumbnail_url, label_color, variety_id,))
+          qry = gsdb.execute("UPDATE gs_variety SET (name, description, thumbnail_url) = (%s, %s, %s) WHERE variety_id = %s", (name, description, thumbnail_url, variety_id,))
           headers = {'Location': url_for('variety.get', variety_id=variety_id)}
           return gs_make_response(message=f'Variety {name} successfully updated',
                     httpstatus=201,
@@ -178,7 +178,7 @@ def update():
 def get_variety(variety_id):
   try:
     json_data = {}
-    row = gsdb.fetchone("""SELECT variety_id, name, description, thumbnail_url, label_color FROM gs_variety WHERE variety_id = %s""", (variety_id,))
+    row = gsdb.fetchone("""SELECT variety_id, name, description, thumbnail_url FROM gs_variety WHERE variety_id = %s""", (variety_id,))
     if variety:
       json_data = formatVariety(row)
       return gs_make_response(data=json_data)

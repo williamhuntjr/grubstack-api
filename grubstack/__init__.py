@@ -93,6 +93,7 @@ cors = CORS(app, supports_credentials=True)
 # API defaults
 app.config['PER_PAGE'] = os.environ.get('MAIL_EMAILED') or 10
 app.config['THUMBNAIL_PLACEHOLDER_IMG'] = '/assets/img/placeholder-image.jpg'
+app.config['THUMBNAIL_PERSON_PLACEHOLDER_IMG'] = '/assets/img/placeholder-male.jpeg'
 
 # Logger
 from .loghandler import GrubStackLogHandler

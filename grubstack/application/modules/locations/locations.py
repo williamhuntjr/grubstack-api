@@ -12,7 +12,8 @@ from grubstack.application.utilities.filters import generate_filters, create_pag
 from grubstack.application.modules.products.menus.menus_service import MenuService
 
 from .locations_utilities import format_params
-from .locations_constants import LOCATION_FILTERS, DEFAULT_FILTERS, REQUIRED_FIELDS
+from .locations_constants import LOCATION_FILTERS, REQUIRED_FIELDS
+
 from .locations_service import LocationService
 
 location = Blueprint('location', __name__)
@@ -27,7 +28,7 @@ menu_service = MenuService()
 def get_all():
   try:
     page, limit = create_pagination_params(request.args)
-    json_data, total_rows, total_pages = location_service.get_all(page, limit, generate_filters(LOCATION_FILTERS, DEFAULT_FILTERS))
+    json_data, total_rows, total_pages = location_service.get_all(page, limit, generate_filters(LOCATION_FILTERS, request.args))
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -58,7 +59,7 @@ def create():
                         httpstatus=400)
 
       name = params['name']
-      location = location_service.search(name, DEFAULT_FILTERS)
+      location = location_service.search(name)
 
       if location is not None:
         return gs_make_response(message='That location already exists. Try a different name',
@@ -66,10 +67,12 @@ def create():
                                 httpstatus=400)
       else:
         location_service.create(format_params(params))
-        location = location_service.search(name, DEFAULT_FILTERS)
+        location = location_service.search(name)
 
-        return gs_make_response(message=f'Location created successfully',
+        headers = {'Location': url_for('location.get', location_id=location['id'])}
+        return gs_make_response(message='Location created successfully',
                               httpstatus=201,
+                              headers=headers,
                               data=location)
     else:
       return gs_make_response(message='Invalid request',
@@ -89,9 +92,9 @@ def create():
 @location.route('/locations/<int:location_id>', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewLocations")
-def get(location_id: int):
+def get(location_id: int): 
   try:
-    location = location_service.get(location_id, DEFAULT_FILTERS)
+    location = location_service.get(location_id, generate_filters(LOCATION_FILTERS, request.args))
 
     if location:
       return gs_make_response(data=location)
@@ -140,21 +143,24 @@ def update(location_id: int):
         location = location_service.get(location_id)
 
         if location is None:
-          return gs_make_response(message=f'Location not found',
+          return gs_make_response(message='Location not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
           if 'name' in params:
-            location_search = location_service.search(params['name'], DEFAULT_FILTERS)
+            location_search = location_service.search(params['name'])
             if location_search is not None and location_search['id'] != location_id:
-              return gs_make_response(message='That location name already in use exists. Try a different name',
+              return gs_make_response(message='That location already exists. Try a different name',
                         status=GStatusCode.ERROR,
                         httpstatus=400)
 
           location_service.update(location_id, format_params(params, location))
-          location = location_service.get(location_id, DEFAULT_FILTERS)
+          location = location_service.get(location_id)
+
+          headers = {'Location': url_for('location.get', location_id=location['id'])}
           return gs_make_response(message=f'Location #{location_id} updated',
                                   httpstatus=201,
+                                  headers=headers,
                                   data=location)
 
       else:
@@ -173,7 +179,7 @@ def update(location_id: int):
 @requires_permission("ViewLocations")
 def get_all_menus(location_id: int):
   try:
-    location = location_service.get(location_id, DEFAULT_FILTERS)
+    location = location_service.get(location_id)
 
     if location == None:
       return gs_make_response(message='Location not found',
@@ -222,7 +228,7 @@ def add_menu(location_id: int):
             
             return gs_make_response(message=f'Menu #{menu_id} added to location', httpstatus=201)
           else:
-            return gs_make_response(message=f'Menu already exists on location',
+            return gs_make_response(message='Menu already exists on location',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:

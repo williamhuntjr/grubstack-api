@@ -1,35 +1,15 @@
-from grubstack import app, gsdb
-from math import ceil
+from grubstack import app
+
+from grubstack.application.utilities.reducers import field_reducer
 
 PER_PAGE = app.config['PER_PAGE']
 
-def buildGramMeasurement(amount: int):
-  measurement = {
-    "value": amount,
-    "unit": {
-      "name": "grams",
-      "abbreviation": "g",
-    },
-  }
-  return measurement
-
-def buildMilligramMeasurement(amount: int):
-  measurement = {
-    "value": amount,
-    "unit": {
-      "name": "milligrams",
-      "abbreviation": "mg",
-    },
-  }
-  return measurement
-
-def formatIngredient(ingredient: dict):
-  return {
+def format_ingredient(ingredient: dict, filters: list = []):
+  json_data = {
     "id": ingredient['ingredient_id'],
     "name": ingredient['name'],
     "description": ingredient['description'],
     "thumbnail_url": ingredient['thumbnail_url'],
-    "label_color": ingredient['label_color'],
     "calories": ingredient['calories'],
     "fat": ingredient['fat'],
     "saturated_fat": ingredient['saturated_fat'],
@@ -42,42 +22,23 @@ def formatIngredient(ingredient: dict):
     "fiber": ingredient['fiber'],
     "price": ingredient['price']
   }
-  
-def formatParams(params: dict):
-  name = params['name']
-  description = params['description'] or ''
-  thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
-  label_color = params['label_color'] or 'blue'
-  calories = params['calories'] or 0.0
-  fat = params['fat'] or 0.0
-  saturated_fat = params['saturated_fat'] or 0.0
-  trans_fat = params['trans_fat'] or 0.0
-  cholesterol = params['cholesterol'] or 0.0
-  sodium = params['sodium'] or 0.0
-  carbs = params['carbs'] or 0.0
-  protein = params['protein'] or 0.0
-  sugar = params['sugar'] or 0.0
-  fiber = params['fiber'] or 0.0
-  price = params['price'] or 0.0
 
-  return (name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price)
+  return json_data
 
-def getIngredients(page: int = 1, limit: int = PER_PAGE):
-  json_data = []
-  ingredients = gsdb.fetchall("SELECT * FROM gs_ingredient ORDER BY name ASC")
-  
-  ingredients_list = []
-  for ingredient in ingredients:
-    ingredients_list.append(formatIngredient(ingredient))
+def format_params(params: dict, ingredient: dict = {}):
+  name = field_reducer('name', params, ingredient, '')
+  description = field_reducer('description', params, ingredient, '')
+  thumbnail_url = field_reducer('thumbnail_url', params, ingredient, app.config['THUMBNAIL_PLACEHOLDER_IMG'])
+  calories = field_reducer('calories', params, ingredient, 0.0)
+  fat = field_reducer('fat', params, ingredient, 0.0)
+  saturated_fat = field_reducer('saturated_fat', params, ingredient, 0.0)
+  trans_fat = field_reducer('trans_fat', params, ingredient, 0.0)
+  cholesterol = field_reducer('cholesterol', params, ingredient, 0.0)
+  sodium = field_reducer('sodium', params, ingredient, 0.0)
+  carbs = field_reducer('carbs', params, ingredient, 0.0)
+  protein = field_reducer('protein', params, ingredient, 0.0)
+  sugar = field_reducer('sugar', params, ingredient, 0.0)
+  fiber = field_reducer('fiber', params, ingredient, 0.0)
+  price = field_reducer('price', params, ingredient, 0.0)
 
-  # Calculate paged data
-  offset = page - 1
-  start = offset * limit
-  end = start + limit
-  total_pages = ceil(len(ingredients) / limit)
-  total_rows = len(ingredients)
-
-  # Get paged data
-  json_data = ingredients_list[start:end]
-
-  return (json_data, total_rows, total_pages)
+  return (name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price)

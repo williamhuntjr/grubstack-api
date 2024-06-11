@@ -2,7 +2,7 @@ from grubstack import gsdb
 
 # Stores
 def getRestaurantMenus(restaurant_id: int):
-  return gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url, label_color
+  return gsdb.fetchall("""SELECT c.menu_id, name, description, thumbnail_url
                                     FROM gs_menu c INNER JOIN gs_restaurant_menu p ON p.menu_id = c.menu_id 
                                     WHERE p.restaurant_id = %s ORDER BY name ASC""", (restaurant_id,))
 def deleteRestaurant(restaurant_id: int):
@@ -10,7 +10,7 @@ def deleteRestaurant(restaurant_id: int):
 
 # Menus
 def getMenuItems(menu_id: int):
-  return gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
+  return gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, price, sale_price, is_onsale
                       FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
                       WHERE p.menu_id = %s ORDER BY name ASC""", (restaurant_id,))
 

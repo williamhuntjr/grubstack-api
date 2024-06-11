@@ -1,36 +1,40 @@
 from grubstack import app, gsdb
 from math import ceil
 
+from grubstack.application.utilities.reducers import field_reducer
+
 PER_PAGE = app.config['PER_PAGE']
 
-def formatItem(item: dict, ingredients_list = [], varieties_list: list = [], filters: list = []):
+def format_item(item: dict, ingredients_list = [], varieties_list: list = [], filters: list = []):
   json_data = {
     "id": item['item_id'],
     "name": item['name'],
     "description": item['description'],
-    "thumbnail_url": item['thumbnail_url'],
-    "label_color": item['label_color'],
-    "ingredients": ingredients_list,
-    "varieties": varieties_list
+    "thumbnail_url": item['thumbnail_url']
   }
-  
+
   if 'price' in item and 'is_onsale' in item and 'sale_price' in item:
     json_data['price'] = item['price']
     json_data['is_onsale'] = item['is_onsale']
     json_data['sale_price'] = item['sale_price']
 
+  if 'showIngredients' in filters and filters['showIngredients']:
+    json_data['ingredients'] = ingredients_list
+
+  if 'showVarieties' in filters and filters['showVarieties']:
+    json_data['varieties'] = varieties_list
+
   return json_data
 
-def formatParams(params: dict):
-  name = params['name']
-  description = params['description'] or ''
-  thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
-  label_color = params['label_color'] or 'blue'
+def format_params(params: dict, item: dict = ()):
+  name = field_reducer('name', params, item, '')
+  description = field_reducer('description', params, item, '')
+  thumbnail_url = field_reducer('thumbnail_url', params, item, app.config['THUMBNAIL_PLACEHOLDER_IMG'])
 
-  return (name, description, thumbnail_url, label_color)
+  return (name, description, thumbnail_url)
 
 def getAllItemIngredients(item_id):
-  ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber, price, is_optional, is_addon, is_extra
+  ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber, price, is_optional, is_addon, is_extra
                                 FROM gs_ingredient c INNER JOIN gs_item_ingredient p ON p.ingredient_id = c.ingredient_id 
                                 WHERE p.item_id = %s ORDER BY name ASC""", (item_id,))
   ingredients_list = []
@@ -40,7 +44,6 @@ def getAllItemIngredients(item_id):
       "name": ingredient['name'],
       "description": ingredient['description'],
       "thumbnail_url": ingredient['thumbnail_url'],
-      "label_color": ingredient['label_color'],
       "calories": ingredient['calories'],
       "fat": ingredient['fat'],
       "saturated_fat": ingredient['saturated_fat'],
@@ -59,7 +62,7 @@ def getAllItemIngredients(item_id):
   return ingredients_list
 
 def getAllItemVarieties(item_id):
-  varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url, label_color
+  varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url
                       FROM gs_variety c INNER JOIN gs_item_variety p ON p.variety_id = c.variety_id 
                       WHERE p.item_id = %s ORDER BY name ASC""", (item_id,))
   varieties_list = []
@@ -68,8 +71,7 @@ def getAllItemVarieties(item_id):
       "id": variety['variety_id'],
       "name": variety['name'],
       "description": variety['description'],
-      "thumbnail_url": variety['thumbnail_url'],
-      "label_color": variety['label_color'],
+      "thumbnail_url": variety['thumbnail_url']
     })
   return varieties_list
 

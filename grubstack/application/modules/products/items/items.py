@@ -1,4 +1,3 @@
-from math import ceil
 import logging, json
 
 from flask import Blueprint, url_for, request
@@ -7,13 +6,18 @@ from grubstack import app, config, gsdb
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import jwt_required, requires_permission
+
+from grubstack.application.utilities.request import verify_params
 from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 
-from .items_utilities import formatItem, getItems, getItemIngredients, formatParams, getAllItemIngredients, getAllItemVarieties
+from .items_utilities import format_item, getItemIngredients, format_params, getAllItemIngredients, getAllItemVarieties
+from .items_constants import ITEM_FILTERS, REQUIRED_FIELDS
+from .items_service import ItemService
 
 item = Blueprint('item', __name__)
 logger = logging.getLogger('grubstack')
-PER_PAGE = app.config['PER_PAGE']
+
+item_service = ItemService()
 
 @item.route('/items', methods=['GET'])
 @jwt_required()
@@ -21,8 +25,7 @@ PER_PAGE = app.config['PER_PAGE']
 def get_all():
   try:
     page, limit = create_pagination_params(request.args)
-
-    json_data, total_rows, total_pages = getItems(page, limit)
+    json_data, total_rows, total_pages = item_service.get_all(page, limit, generate_filters(ITEM_FILTERS, request.args))
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -37,37 +40,39 @@ def get_all():
 @requires_permission("MaintainItems")
 def create():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      name, description, thumbnail_url, label_color = formatParams(params)
 
-      if name:
-        # Check if exists
-        row = gsdb.fetchall("SELECT * from gs_item WHERE name = %s", (name,))
+      verify_params(params, REQUIRED_FIELDS)
 
-        if row is not None and len(row) > 0:
-          return gs_make_response(message='That item already exists. Try a different name',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=400)
-        else:
-          qry = gsdb.execute("""INSERT INTO gs_item
-                                (tenant_id, item_id, name, description, thumbnail_url, label_color)
-                                VALUES 
-                                (%s, DEFAULT, %s, %s, %s, %s)""", (app.config['TENANT_ID'], name, description, thumbnail_url, label_color))
-          row = gsdb.fetchone("SELECT * FROM gs_item WHERE name = %s", (name,))
-          if row is not None and len(row) > 0:
-            headers = {'Location': url_for('item.get', item_id=row['item_id'])}
-            return gs_make_response(message=f'Item {name} successfully created',
-                                httpstatus=201,
-                                headers=headers,
-                                data=row)
-      else:
-        return gs_make_response(message='Invalid request',
+      name, description, thumbnail_url = format_params(params)
+      
+      name = params['name']
+      item = item_service.search(name)
+
+      if item is not None:
+        return gs_make_response(message='That item already exists. Try a different name',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
+      else:
+        item_service.create(format_params(params))
+        item = item_service.search(name)
 
+        headers = {'Location': url_for('item.get', item_id=item['id'])}
+        return gs_make_response(message='Item created successfully',
+                              httpstatus=201,
+                              headers=headers,
+                              data=item)
+    else:
+      return gs_make_response(message='Invalid request',
+                              status=GStatusCode.ERROR,
+                              httpstatus=400)
+
+  except ValueError as e:
+    return gs_make_response(message=e,
+                            status=GStatusCode.ERROR,
+                            httpstatus=400)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Unable to create item',
@@ -79,22 +84,15 @@ def create():
 @requires_permission("ViewItems")
 def get(item_id: int):
   try:
-    json_data = {}
+    item = item_service.get(item_id, generate_filters(ITEM_FILTERS, request.args))
 
-    # Check if exists
-    row = gsdb.fetchone("SELECT * FROM gs_item WHERE item_id = %s", (item_id,))
-    if row: 
-      ingredients_list = getAllItemIngredients(item_id)
-      varieties_list = getAllItemVarieties(item_id)
+    if item:
+      return gs_make_response(data=item)
 
-      json_data = formatItem(row, ingredients_list, varieties_list)
     else:
-      return gs_make_response(message='Invalid item ID',
+      return gs_make_response(message='Item not found',
                               status=GStatusCode.ERROR,
-                              httpstatus=400)
-
-    return gs_make_response(data=json_data)
-
+                              httpstatus=404)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
@@ -106,14 +104,14 @@ def get(item_id: int):
 @requires_permission("MaintainItems")
 def delete(item_id: str):
   try:
-    row = gsdb.fetchone("SELECT * FROM gs_item WHERE item_id = %s", (item_id,))
-    if row is None:
-      return gs_make_response(message='Invalid item',
+    item = item_service.get(item_id)
+
+    if item is None:
+      return gs_make_response(message='Item not found',
                               status=GStatusCode.ERROR,
-                              httpstatus=400)
+                              httpstatus=404)
     else:
-      qry = gsdb.execute("DELETE FROM gs_item WHERE item_id = %s", (item_id,))
-      qry = gsdb.execute("DELETE FROM gs_item_ingredient WHERE item_id = %s", (item_id,))
+      qry = item_service.delete(item_id)
       return gs_make_response(message=f'Item #{item_id} deleted')
 
   except Exception as e:
@@ -122,32 +120,37 @@ def delete(item_id: str):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@item.route('/items', methods=['PUT'])
+@item.route('/items/<int:item_id>', methods=['PATCH'])
 @jwt_required()
 @requires_permission("MaintainItems")
-def update():
+def update(item_id: int):
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      item_id = params['id']
-      name, description, thumbnail_url, label_color = formatParams(params)
 
-      if item_id and name:
-        row = gsdb.fetchone("SELECT * FROM gs_item WHERE item_id = %s", (item_id,))
+      if item_id:
+        item = item_service.get(item_id)
 
-        if row is None:
-          return gs_make_response(message=f'Item {name} does not exist',
+        if item is None:
+          return gs_make_response(message='Item not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
-        else:
-          qry = gsdb.execute("UPDATE gs_item SET (name, description, thumbnail_url, label_color) = (%s, %s, %s, %s) WHERE item_id = %s", (name, description, thumbnail_url, label_color, item_id,))
-          headers = {'Location': url_for('item.get', item_id=item_id)}
-          return gs_make_response(message=f'Item {name} successfully updated',
-                    httpstatus=201,
-                    headers=headers,
-                    data=json_data)
+        if 'name' in params:
+          item_search = item_service.search(params['name'])
+          if item_search is not None and item_search['id'] != item_id:
+            return gs_make_response(message='That item already exists. Try a different name',
+                      status=GStatusCode.ERROR,
+                      httpstatus=400)
+
+        item_service.update(item_id, format_params(params, item))
+        item = item_service.get(item_id)
+
+        headers = {'Location': url_for('item.get', item_id=item['id'])}
+        return gs_make_response(message=f'Item #{item_id} updated',
+                                httpstatus=201,
+                                headers=headers,
+                                data=item)
 
       else:
         return gs_make_response(message='Invalid request',

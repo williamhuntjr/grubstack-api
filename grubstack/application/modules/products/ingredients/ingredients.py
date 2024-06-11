@@ -1,17 +1,24 @@
 import logging, json
-from math import ceil
-from flask import Blueprint, url_for, request
-from grubstack import app, config, gsdb
+
+from flask import Blueprint, request
+
+from grubstack import app, config
 from grubstack.utilities import gs_make_response
-from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import jwt_required, requires_permission
-from .ingredients_utilities import buildGramMeasurement, buildMilligramMeasurement, formatIngredient, getIngredients, formatParams
+
+from grubstack.application.utilities.request import verify_params
+from grubstack.application.utilities.filters import generate_filters, create_pagination_params
+
+from .ingredients_utilities import format_params
+from .ingredients_constants import INGREDIENT_FILTERS, REQUIRED_FIELDS
+
+from .ingredients_service import IngredientService
 
 ingredient = Blueprint('ingredient', __name__)
 logger = logging.getLogger('grubstack')
 
-PER_PAGE = app.config['PER_PAGE']
+ingredient_service = IngredientService()
 
 @ingredient.route('/ingredients', methods=['GET'])
 @jwt_required()
@@ -19,8 +26,7 @@ PER_PAGE = app.config['PER_PAGE']
 def get_all():
   try:
     page, limit = create_pagination_params(request.args)
-
-    json_data, total_rows, total_pages = getIngredients(page, limit)
+    json_data, total_rows, total_pages = ingredient_service.get_all(page, limit, generate_filters(INGREDIENT_FILTERS, request.args))
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -35,38 +41,39 @@ def get_all():
 @requires_permission("MaintainIngredients")
 def create():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
 
-      name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price = formatParams(params)
-      
-      if name:
-        row = gsdb.fetchall("SELECT * from gs_ingredient WHERE name = %s", (name,))
+      verify_params(params, REQUIRED_FIELDS)
 
-        if row is not None and len(row) > 0:
-          return gs_make_response(message='That ingredient already exists. Try a different name',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=400)
-        else:
-          qry = gsdb.execute("""INSERT INTO gs_ingredient
-                                (tenant_id, ingredient_id, name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price)
-                                VALUES
-                                (%s, DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
-                            """, (app.config['TENANT_ID'], name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price,))
-          row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE name = %s", (name,))
-          if row is not None and len(row) > 0:
-            headers = {'Location': url_for('ingredient.get', ingredient_id=row['ingredient_id'])}
-            return gs_make_response(message=f'Ingredient {name} successfully created',
-                                httpstatus=201,
-                                headers=headers,
-                                data=row)
-      else:
-        return gs_make_response(message='Invalid request',
+      name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price = format_params(params)
+      
+      name = params['name']
+      ingredient = ingredient_service.search(name)
+
+      if ingredient is not None:
+        return gs_make_response(message='That ingredient already exists. Try a different name',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
+      else:
+        ingredient_service.create(format_params(params))
+        ingredient = ingredient_service.search(name)
 
+        headers = {'Location': url_for('ingredient.get', ingredient_id=ingredient['id'])}
+        return gs_make_response(message='Ingredient created successfully',
+                              httpstatus=201,
+                              headers=headers,
+                              data=ingredient)
+    else:
+      return gs_make_response(message='Invalid request',
+                              status=GStatusCode.ERROR,
+                              httpstatus=400)
+
+  except ValueError as e:
+    return gs_make_response(message=e,
+                            status=GStatusCode.ERROR,
+                            httpstatus=400)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Unable to create ingredient',
@@ -78,16 +85,15 @@ def create():
 @requires_permission("ViewIngredients")
 def get(ingredient_id: int):
   try:
-    json_data = {}
-    if request.json:
-      data = json.loads(request.data)
+    ingredient = ingredient_service.get(ingredient_id, generate_filters(INGREDIENT_FILTERS, request.args))
 
-      row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
-      if row: 
-        json_data = formatIngredient(row)
+    if ingredient:
+      return gs_make_response(data=ingredient)
 
-    return gs_make_response(data=json_data)
-
+    else:
+      return gs_make_response(message='Ingredient not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
@@ -97,50 +103,55 @@ def get(ingredient_id: int):
 @ingredient.route('/ingredients/<string:ingredient_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainIngredients")
-def delete(ingredient_id: str):
+def delete(ingredient_id: int):
   try:
-    row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
-    if row is None:
-      return gs_make_response(message='Invalid ingredient',
+    ingredient = ingredient_service.get(ingredient_id)
+
+    if ingredient is None:
+      return gs_make_response(message='Ingredient not found',
                               status=GStatusCode.ERROR,
-                              httpstatus=400)
+                              httpstatus=404)
     else:
-      qry = gsdb.execute("DELETE FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
+      qry = ingredient_service.delete(ingredient_id)
       return gs_make_response(message=f'Ingredient #{ingredient_id} deleted')
-      
+
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@ingredient.route('/ingredients', methods=['PUT'])
+@ingredient.route('/ingredients/<int:ingredient_id>', methods=['PATCH'])
 @jwt_required()
 @requires_permission("MaintainIngredients")
-def update():
+def update(ingredient_id: int):
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      ingredient_id = params['id']
-      name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price = formatParams(params)
 
-      if ingredient_id and name != None:
-        # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
+      if ingredient_id:
+        ingredient = ingredient_service.get(ingredient_id)
 
-        if row is None:
-          return gs_make_response(message=f'Ingredient {name} does not exist',
+        if ingredient is None:
+          return gs_make_response(message='Ingredient not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
-        else:
-          qry = gsdb.execute("UPDATE gs_ingredient SET (name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price) = (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) WHERE ingredient_id = %s", (name, description, thumbnail_url, label_color, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price, ingredient_id,))
-          headers = {'Location': url_for('ingredient.get', ingredient_id=ingredient_id)}
-          return gs_make_response(message=f'Ingredient {name} successfully updated',
-                    httpstatus=201,
-                    headers=headers,
-                    data=json_data)
+        if 'name' in params:
+          ingredient_search = ingredient_service.search(params['name'])
+          if ingredient_search is not None and ingredient_search['id'] != ingredient_id:
+            return gs_make_response(message='That ingredient already exists. Try a different name',
+                      status=GStatusCode.ERROR,
+                      httpstatus=400)
+
+        ingredient_service.update(ingredient_id, format_params(params, ingredient))
+        ingredient = ingredient_service.get(ingredient_id)
+
+        headers = {'Location': url_for('ingredient.get', ingredient_id=ingredient['id'])}
+        return gs_make_response(message=f'Ingredient #{ingredient_id} updated',
+                                httpstatus=201,
+                                headers=headers,
+                                data=ingredient)
 
       else:
         return gs_make_response(message='Invalid request',

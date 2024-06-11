@@ -1,8 +1,8 @@
 from math import ceil
-from pypika import Query, Table, Order, functions
+from pypika import Query, Table, Order, functions, Parameter
 
 from grubstack import app, gsdb, gsprod
-from grubstack.application.modules.products.items.items_utilities import formatItem
+from grubstack.application.modules.products.items.items_utilities import format_item
 from grubstack.application.utilities.filters import generate_paginated_data
 
 from .menus_utilities import format_menu
@@ -19,7 +19,7 @@ class MenuService:
       items = self.get_items(menu['menu_id'])
       if items != None:
         for item in items:
-          items_list.append(formatItem(item, [], [], filters))
+          items_list.append(format_item(item, [], [], filters))
 
     return format_menu(menu, items_list, filters)
 
@@ -57,23 +57,71 @@ class MenuService:
     return
 
   def update(self, menu_id: int, params: dict = ()):
-    name, description, thumbnail_url, label_color = params
-    return gsdb.execute("UPDATE gs_menu SET (name, description, thumbnail_url, label_color) = (%s, %s, %s, %s) WHERE menu_id = %s", (name, description, thumbnail_url, label_color, menu_id,))
+    name, description, thumbnail_url = params
+
+    gs_menu = Table('gs_menu')
+    qry = Query.update(
+      gs_menu
+    ).set(
+      gs_menu.name, Parameter('%s')
+    ).set(
+      gs_menu.description, Parameter('%s')
+    ).set(
+      gs_menu.thumbnail_url, Parameter('%s')
+    ).where(
+      gs_menu.menu_id == Parameter('%s')
+    )
+
+    return gsdb.execute(str(qry), (name, description, thumbnail_url, menu_id,))
 
   def create(self, params: dict = ()):
-    name, description, thumbnail_url, label_color = params
-    return gsdb.execute("""INSERT INTO gs_menu 
-                        (tenant_id, menu_id, name, description, thumbnail_url, label_color)
-                        VALUES
-                        (%s, DEFAULT, %s, %s, %s, %s)""", (app.config['TENANT_ID'], name, description, thumbnail_url, label_color,))
+    name, description, thumbnail_url = params
+
+    gs_menu = Table('gs_menu')
+    qry = Query.into(
+      gs_menu
+    ).columns(
+      gs_menu.tenant_id,
+      gs_menu.name,
+      gs_menu.description,
+      gs_menu.thumbnail_url,
+    ).insert(
+      app.config['TENANT_ID'],
+      Parameter('%s'),
+      Parameter('%s'),
+      Parameter('%s')
+    )
+
+    return gsdb.execute(str(qry), (name, description, thumbnail_url,))
 
   def delete(self, menu_id: int):
-    gsdb.execute("DELETE FROM gs_menu WHERE menu_id = %s", (menu_id,))
-    gsdb.execute("DELETE FROM gs_menu_item WHERE menu_id = %s", (menu_id,))
+    gs_menu = Table('gs_menu')
+    qry = Query.from_(
+      gs_menu
+    ).delete().where(
+      gs_menu.menu_id == Parameter('%s')
+    )
+
+    gsdb.execute(str(qry), (menu_id,))
+
+    gs_menu_item = Table('gs_menu_item')
+    qry = Query.from_(
+      gs_menu_item
+    ).delete().where(
+      gs_menu_item.menu_id == Parameter('%s')
+    )
+
+    gsdb.execute(str(qry), (menu_id,))
 
   def exists(self, menu_name: str):
     table = Table('gs_menu')
-    qry = Query.from_('gs_menu').select('*').where(table.name == menu_name)
+    qry = Query.from_(
+      'gs_menu'
+    ).select(
+      '*'
+    ).where(
+      table.name == menu_name
+    )
     
     menus = gsdb.fetchall(str(qry))
 
@@ -83,15 +131,15 @@ class MenuService:
     return False
 
   def get_item(self, menu_id: int, item_id: int):
-    item = gsdb.fetchone("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
+    item = gsdb.fetchone("""SELECT c.item_id, name, description, thumbnail_url, price, sale_price, is_onsale
                   FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
                   WHERE p.menu_id = %s AND c.item_id = %s ORDER BY name ASC""", (menu_id, item_id,))
     if item:
-      return formatItem(item)
+      return format_item(item)
     return None
 
   def get_items(self, menu_id: int):
-    return gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, label_color, price, sale_price, is_onsale
+    return gsdb.fetchall("""SELECT c.item_id, name, description, thumbnail_url, price, sale_price, is_onsale
                       FROM gs_item c INNER JOIN gs_menu_item p ON p.item_id = c.item_id 
                       WHERE p.menu_id = %s ORDER BY name ASC""", (menu_id,))
 
@@ -127,7 +175,7 @@ class MenuService:
     items_list = []
     if items != None:
       for item in items:
-        items_list.append(formatItem(item))
+        items_list.append(format_item(item))
 
     json_data, total_rows, total_pages = generate_paginated_data(items_list, page, limit)
 

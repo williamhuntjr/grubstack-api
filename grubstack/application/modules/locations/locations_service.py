@@ -6,15 +6,14 @@ from grubstack.application.modules.products.menus.menus_utilities import format_
 from grubstack.application.utilities.filters import generate_paginated_data
 
 from .locations_utilities import format_location
-from .locations_constants import PER_PAGE, DEFAULT_LOCATION_LIMIT
+from .locations_constants import PER_PAGE, DEFAULT_FILTERS, DEFAULT_LOCATION_LIMIT
 
-def format_item(item: dict, ingredients_list = [], varieties_list: list = [], filters: list = []):
+def format_item(item: dict, ingredients_list = [], varieties_list: list = []):
   json_data = {
     "id": item['item_id'],
     "name": item['name'],
     "description": item['description'],
     "thumbnail_url": item['thumbnail_url'],
-    "label_color": item['label_color'],
     "ingredients": ingredients_list,
     "varieties": varieties_list
   }
@@ -31,6 +30,9 @@ class LocationService:
     pass
 
   def apply_filters(self, location: dict, filters: list = []):
+    if len(filters) <= 0:
+      filters = DEFAULT_FILTERS
+
     menus_list = []
 
     if 'showMenus' in filters and filters['showMenus']:
@@ -49,7 +51,11 @@ class LocationService:
     return format_location(location, menus_list, filters)
 
   def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
-    gs_location = Table('gs_location')    
+    if len(filters) <= 0:
+      filters = DEFAULT_FILTERS
+
+    gs_location = Table('gs_location')
+
     qry = Query.from_(
       gs_location
     ).select(
@@ -57,7 +63,15 @@ class LocationService:
     ).orderby(
       gs_location.create_date, order=Order.asc
     )
+    
+    if 'isActive' in filters:
+      if isinstance(filters['isActive'], str):
+        active_filter = 't' if filters['isActive'].lower() == 'true' else 'f'
+      if isinstance(filters['isActive'], bool):
+        active_filter = filters['isActive']
 
+      qry = qry.where(gs_location.is_active == active_filter)
+  
     locations = gsdb.fetchall(str(qry))
 
     filtered = []
@@ -99,6 +113,9 @@ class LocationService:
     return gsdb.execute(str(qry), (name, address1, city, state, postal, location_type, phone_number, is_active,))
 
   def search(self, name: str, filters: list = []):
+    if len(filters) <= 0:
+      filters = DEFAULT_FILTERS
+
     gs_location = Table('gs_location')
     qry = Query.from_(
       gs_location
@@ -118,6 +135,9 @@ class LocationService:
       return None
 
   def get(self, location_id: int, filters: list = []):
+    if len(filters) <= 0:
+      filters = DEFAULT_FILTERS
+
     gs_location = Table('gs_location')
     qry = Query.from_(
       gs_location
@@ -148,7 +168,6 @@ class LocationService:
 
   def update(self, location_id: int, params: dict = ()):
     name, address1, city, state, postal, location_type, phone_number, is_active = params
-    print(params)
 
     gs_location = Table('gs_location')
     qry = Query.update(
@@ -174,28 +193,6 @@ class LocationService:
     )
 
     return gsdb.execute(str(qry), (name, address1, city, state, postal, location_type, phone_number, is_active, location_id,))
-  
-  def get_menus(self, location_id: int):
-    gs_menu, gs_location_menu = Tables('gs_menu', 'gs_location_menu')
-    qry = Query.from_(
-      gs_location_menu
-    ).inner_join(
-      gs_menu
-    ).on(
-      gs_menu.menu_id == gs_location_menu.menu_id
-    ).select(
-      gs_location_menu.menu_id,
-      gs_menu.name,
-      gs_menu.description,
-      gs_menu.thumbnail_url,
-      gs_menu.label_color
-    ).where(
-      gs_location_menu.location_id == Parameter('%s')
-    ).orderby(
-      gs_menu.name, order=Order.asc
-    )
-
-    return gsdb.fetchall(str(qry), (location_id,))
 
   def get_menus(self, location_id: int):
     gs_menu, gs_location_menu = Tables('gs_menu', 'gs_location_menu')
@@ -209,8 +206,7 @@ class LocationService:
       gs_location_menu.menu_id,
       gs_menu.name,
       gs_menu.description,
-      gs_menu.thumbnail_url,
-      gs_menu.label_color
+      gs_menu.thumbnail_url
     ).where(
       gs_location_menu.location_id == Parameter('%s')
     ).orderby(
@@ -295,8 +291,7 @@ class LocationService:
       gs_menu_item.is_onsale,
       gs_item.name,
       gs_item.description,
-      gs_item.thumbnail_url,
-      gs_item.label_color,
+      gs_item.thumbnail_url
     ).where(
       gs_menu_item.menu_id == Parameter('%s')
     ).orderby(

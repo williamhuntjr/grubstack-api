@@ -183,8 +183,7 @@ class FranchiseService:
       gs_restaurant_menu.menu_id,
       gs_menu.name,
       gs_menu.description,
-      gs_menu.thumbnail_url,
-      gs_menu.label_color
+      gs_menu.thumbnail_url
     ).where(
       gs_restaurant_menu.restaurant_id == Parameter('%s')
     ).orderby(

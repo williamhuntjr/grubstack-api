@@ -9,7 +9,7 @@ from grubstack.envelope import GStatusCode
 from grubstack.authentication import AuthError, jwt_required, requires_permission
 from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 
-from .menus_utilities import format_menu, getMenus, format_params, format_item_params
+from .menus_utilities import format_menu, format_params, format_item_params
 from .menus_constants import MENU_FILTERS, PER_PAGE, DEFAULT_FILTERS
 from .menus_service import MenuService
 

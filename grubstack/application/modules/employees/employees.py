@@ -6,10 +6,14 @@ from grubstack import app, config
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import jwt_required, requires_permission
-from grubstack.application.utilities.filters import create_pagination_params
+
+from grubstack.application.utilities.request import verify_params
+from grubstack.application.utilities.filters import generate_filters, create_pagination_params
+
+from .employees_utilities import format_params
+from .employees_constants import REQUIRED_FIELDS, EMPLOYEE_FILTERS
 
 from .employees_service import EmployeeService
-from .employees_utilities import format_params
 
 employee = Blueprint('employee', __name__)
 logger = logging.getLogger('grubstack')
@@ -23,7 +27,7 @@ def get_all():
   try:
     page, limit = create_pagination_params(request.args)
 
-    json_data, total_rows, total_pages = employee_service.get_all(page, limit)
+    json_data, total_rows, total_pages = employee_service.get_all(page, limit, generate_filters(EMPLOYEE_FILTERS, request.args))
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -38,39 +42,36 @@ def get_all():
 @requires_permission("MaintainEmployees")
 def create():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title = format_params(params)
 
-      if first_name and last_name and gender and address1 and city and state and postal:
-        employee = employee_service.search(first_name, last_name)
-        
-        if employee is not None:
-          return gs_make_response(message='That employee already exists. Try a different first name and last name.',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=400)
-        else:
-          employee_service.create(format_params(params))
-          employee = employee_service.search(first_name, last_name)
+      verify_params(params, REQUIRED_FIELDS)
 
-          if employee is not None:
-            headers = {'Location': url_for('employee.get', employee_id=employee['id'])}
-            return gs_make_response(message=f'Employee {first_name} {last_name} successfully created',
-                                httpstatus=201,
-                                headers=headers,
-                                data=employee)
-          else:
-            return gs_make_response(message='Unable to create employee',
-                            status=GStatusCode.ERROR,
-                            httpstatus=500)
+      employee = employee_service.search(params['first_name'], params['last_name'])
 
-      else:
-        return gs_make_response(message='Invalid request',
+      if employee is not None:
+        return gs_make_response(message='That employee already exists. Try a different first name and last name.',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
+      else:
+        employee_service.create(format_params(params))
+        employee = employee_service.search(params['first_name'], params['last_name'])
 
+        headers = {'Location': url_for('employee.get', employee_id=employee['id'])}
+        return gs_make_response(message='Employee created successfully',
+                              httpstatus=201,
+                              headers=headers,
+                              data=employee)
+    else:
+      return gs_make_response(message='Invalid request',
+                              status=GStatusCode.ERROR,
+                              httpstatus=400)
+
+  except ValueError as e:
+    return gs_make_response(message=e,
+                            status=GStatusCode.ERROR,
+                            httpstatus=400)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Unable to create employee',
@@ -82,7 +83,7 @@ def create():
 @requires_permission("ViewEmployees")
 def get(employee_id: int):
   try:
-    employee = employee_service.get(employee_id)
+    employee = employee_service.get(employee_id, generate_filters(LOCATION_FILTERS, request.args))
     
     if employee:
       return gs_make_response(data=employee)
@@ -119,30 +120,31 @@ def delete(employee_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@employee.route('/employees', methods=['PUT'])
+@employee.route('/employees/<int:employee_id>', methods=['PATCH'])
 @jwt_required()
 @requires_permission("MaintainEmployees")
-def update():
+def update(employee_id: int):
   try:
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      employee_id = params['id']
-      first_name, last_name, gender, address1, city, state, postal, phone, email, profile_thumbnail_url, hire_date, employment_status, job_title = format_params(params)
 
-      if employee_id and first_name and last_name and gender and address1 and city and state and postal:
+      if employee_id:
         employee = employee_service.get(employee_id)
 
         if employee is None:
-          return gs_make_response(message=f'Employee {first_name} {last_name} does not exist',
+          return gs_make_response(message='Employee not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
         else:
-          employee_service.update(employee_id, format_params(params))
+          employee_service.update(employee_id, format_params(params, employee))
+          employee = employee_service.get(employee_id)
+
           headers = {'Location': url_for('employee.get', employee_id=employee_id)}
-          return gs_make_response(message=f'Employee {first_name} {last_name} successfully updated',
+          return gs_make_response(message=f'Employee #{employee_id} updated',
                     httpstatus=201,
-                    headers=headers)
+                    headers=headers,
+                    data=employee)
 
       else:
         return gs_make_response(message='Invalid request',

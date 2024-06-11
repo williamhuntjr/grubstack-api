@@ -133,8 +133,7 @@ CREATE TABLE public.gs_menu (
     menu_id SERIAL PRIMARY KEY NOT NULL,
     name character varying(255) NOT NULL,
     description character varying(255),
-    thumbnail_url text,
-    label_color character varying(16) DEFAULT 'blue'
+    thumbnail_url text
 );
 ALTER TABLE public.gs_menu OWNER TO grubstack;
 
