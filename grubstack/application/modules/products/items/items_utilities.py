@@ -1,9 +1,8 @@
-from grubstack import app, gsdb
-from math import ceil
+from grubstack import app
 
 from grubstack.application.utilities.reducers import field_reducer
 
-PER_PAGE = app.config['PER_PAGE']
+from .items_constants import PER_PAGE
 
 def format_item(item: dict, ingredients_list = [], varieties_list: list = [], filters: list = []):
   json_data = {
@@ -13,9 +12,13 @@ def format_item(item: dict, ingredients_list = [], varieties_list: list = [], fi
     "thumbnail_url": item['thumbnail_url']
   }
 
-  if 'price' in item and 'is_onsale' in item and 'sale_price' in item:
+  if 'price' in item:
     json_data['price'] = item['price']
+
+  if 'is_onsale' in item:
     json_data['is_onsale'] = item['is_onsale']
+
+  if 'sale_price' in item:
     json_data['sale_price'] = item['sale_price']
 
   if 'showIngredients' in filters and filters['showIngredients']:
@@ -26,90 +29,16 @@ def format_item(item: dict, ingredients_list = [], varieties_list: list = [], fi
 
   return json_data
 
-def format_params(params: dict, item: dict = ()):
+def format_params(params: dict, item: dict = {}):
   name = field_reducer('name', params, item, '')
   description = field_reducer('description', params, item, '')
   thumbnail_url = field_reducer('thumbnail_url', params, item, app.config['THUMBNAIL_PLACEHOLDER_IMG'])
 
   return (name, description, thumbnail_url)
+ 
+def format_ingredient_params(params: dict, ingredient: dict = {}):
+  is_optional = field_reducer('is_optional', params, ingredient, 'f')
+  is_addon = field_reducer('is_addon', params, ingredient, 'f')
+  is_extra = field_reducer('is_extra', params, ingredient, 'f')
 
-def getAllItemIngredients(item_id):
-  ingredients = gsdb.fetchall("""SELECT c.ingredient_id, name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, carbs, sodium, protein, sugar, fiber, price, is_optional, is_addon, is_extra
-                                FROM gs_ingredient c INNER JOIN gs_item_ingredient p ON p.ingredient_id = c.ingredient_id 
-                                WHERE p.item_id = %s ORDER BY name ASC""", (item_id,))
-  ingredients_list = []
-  for ingredient in ingredients:
-    ingredients_list.append({
-      "id": ingredient['ingredient_id'],
-      "name": ingredient['name'],
-      "description": ingredient['description'],
-      "thumbnail_url": ingredient['thumbnail_url'],
-      "calories": ingredient['calories'],
-      "fat": ingredient['fat'],
-      "saturated_fat": ingredient['saturated_fat'],
-      "trans_fat": ingredient['trans_fat'],
-      "cholesterol": ingredient['cholesterol'],
-      "sodium": ingredient['sodium'],
-      "carbs": ingredient['carbs'],
-      "protein": ingredient['protein'],
-      "sugar": ingredient['sugar'],
-      "fiber": ingredient['fiber'],
-      "price": ingredient['price'],
-      "is_optional": ingredient['is_optional'],
-      "is_addon": ingredient['is_addon'],
-      "is_extra": ingredient['is_extra'],
-    })
-  return ingredients_list
-
-def getAllItemVarieties(item_id):
-  varieties = gsdb.fetchall("""SELECT c.variety_id, name, description, thumbnail_url
-                      FROM gs_variety c INNER JOIN gs_item_variety p ON p.variety_id = c.variety_id 
-                      WHERE p.item_id = %s ORDER BY name ASC""", (item_id,))
-  varieties_list = []
-  for variety in varieties:
-    varieties_list.append({
-      "id": variety['variety_id'],
-      "name": variety['name'],
-      "description": variety['description'],
-      "thumbnail_url": variety['thumbnail_url']
-    })
-  return varieties_list
-
-def getItems(page: int = 1, limit: int = PER_PAGE):
-  json_data = []
-  items = gsdb.fetchall("SELECT * FROM gs_item ORDER BY name ASC")
-  
-  items_list = []
-  for item in items:
-    ingredients_list = getAllItemIngredients(item['item_id'])
-    varieties_list = getAllItemVarieties(item['item_id'])
-
-    items_list.append(formatItem(item, ingredients_list, varieties_list))
-
-  # Calculate paged data
-  offset = page - 1
-  start = offset * limit
-  end = start + limit
-  total_pages = ceil(len(items) / limit)
-  total_rows = len(items)
-
-  # Get paged data
-  json_data = items_list[start:end]
-
-  return (json_data, total_rows, total_pages)
-
-def getItemIngredients(item_id, page: int = 1, limit: int = PER_PAGE):
-  json_data = []
-  ingredients = getAllItemIngredients(item_id)
-
-  # Calculate paged data
-  offset = page - 1
-  start = offset * limit
-  end = start + limit
-  total_pages = ceil(len(ingredients) / limit)
-  total_rows = len(ingredients)
-
-  # Get paged data
-  json_data = ingredients[start:end]
-
-  return (json_data, total_rows, total_pages)
+  return (is_optional, is_addon, is_extra)

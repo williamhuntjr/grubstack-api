@@ -1,33 +1,34 @@
 import logging, json
-from math import ceil
+
 from flask import Blueprint, url_for, request
-from grubstack import app, config, gsdb
+
+from grubstack import app, config
 from grubstack.utilities import gs_make_response
 from grubstack.envelope import GStatusCode
 from grubstack.authentication import jwt_required, requires_permission
-from .varieties_utilities import formatVariety, getVarieties, formatParams, getVarietyIngredients
+
+from grubstack.application.utilities.request import verify_params
+from grubstack.application.utilities.filters import generate_filters, create_pagination_params
+
+from grubstack.application.modules.products.ingredients.ingredients_service import IngredientService
+
+from .varieties_utilities import format_variety, format_params
+from .varieties_constants import VARIETY_FILTERS, REQUIRED_FIELDS
+from .varieties_service import VarietyService
 
 variety = Blueprint('variety', __name__)
 logger = logging.getLogger('grubstack')
 
-PER_PAGE = app.config['PER_PAGE']
+variety_service = VarietyService()
+ingredient_service = IngredientService()
 
 @variety.route('/varieties', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewVarieties")
 def get_all():
   try:
-    # Get route parameters
-    page = request.args.get('page')
-    limit = request.args.get('limit')
-
-    if limit is None: limit = PER_PAGE
-    else: limit = int(limit)
-
-    if page is None: page = 1
-    else: page = int(page)
-
-    json_data, total_rows, total_pages = getVarieties(page, limit)
+    page, limit = create_pagination_params(request.args)
+    json_data, total_rows, total_pages = variety_service.get_all(page, limit, generate_filters(VARIETY_FILTERS, request.args))
 
     return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
@@ -37,63 +38,84 @@ def get_all():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@variety.route('/variety/create', methods=['POST'])
+@variety.route('/varieties', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainVarieties")
 def create():
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      name, description, thumbnail_url = formatParams(params)
 
-      if name:
-        # Check if exists
-        row = gsdb.fetchall("SELECT * from gs_variety WHERE name = %s", (name,))
+      verify_params(params, REQUIRED_FIELDS)
 
-        if row is not None and len(row) > 0:
-          return gs_make_response(message='That variety already exists. Try a different name',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=400)
-        else:
-          qry = gsdb.execute("""INSERT INTO gs_variety
-                                (tenant_id, variety_id, name, description, thumbnail_url)
-                                VALUES 
-                                (%s, DEFAULT, %s, %s, %s)""", (app.config['TENANT_ID'], name, description, thumbnail_url,))
-          row = gsdb.fetchone("SELECT * FROM gs_variety WHERE name = %s", (name,))
-          if row is not None and len(row) > 0:
-            headers = {'Location': url_for('variety.get', variety_id=row['variety_id'])}
-            return gs_make_response(message=f'Variety {name} successfully created',
-                                httpstatus=201,
-                                headers=headers,
-                                data=row)
-      else:
-        return gs_make_response(message='Invalid request',
+      name, description, thumbnail_url = format_params(params)
+      
+      name = params['name']
+      variety = variety_service.search(name)
+
+      if variety is not None:
+        return gs_make_response(message='That variety already exists. Try a different name',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
+      else:
+        variety_id = variety_service.create(format_params(params))[0]
+        variety = variety_service.get(variety_id)
 
+        headers = {'Location': url_for('variety.get', variety_id=variety_id)}
+        return gs_make_response(message='Variety created successfully',
+                              httpstatus=201,
+                              headers=headers,
+                              data=variety)
+    else:
+      return gs_make_response(message='Invalid request',
+                              status=GStatusCode.ERROR,
+                              httpstatus=400)
+
+  except ValueError as e:
+    return gs_make_response(message=e,
+                            status=GStatusCode.ERROR,
+                            httpstatus=400)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Unable to create variety',
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@variety.route('/variety/<string:variety_id>', methods=['GET'])
+@variety.route('/varieties/<int:variety_id>', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewVarieties")
 def get(variety_id: int):
   try:
-    json_data = {}
-    if request.json:
-      data = json.loads(request.data)
+    variety = variety_service.get(variety_id, generate_filters(VARIETY_FILTERS, request.args))
 
-      # Check if exists
-      row = gsdb.fetchone("SELECT * FROM gs_variety WHERE variety_id = %s", (variety_id,))
-      if row: 
-        json_data = formatVariety(row)
+    if variety:
+      return gs_make_response(data=variety)
 
-    return gs_make_response(data=json_data)
+    else:
+      return gs_make_response(message='Variety not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Error processing request',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
+@variety.route('/varieties/<int:variety_id>', methods=['DELETE'])
+@jwt_required()
+@requires_permission("MaintainVarieties")
+def delete(variety_id: int):
+  try:
+    variety = variety_service.get(variety_id)
+
+    if variety is None:
+      return gs_make_response(message='Variety not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+    else:
+      qry = variety_service.delete(variety_id)
+      return gs_make_response(message=f'Variety #{variety_id} deleted')
 
   except Exception as e:
     logger.exception(e)
@@ -101,65 +123,37 @@ def get(variety_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@variety.route('/variety/delete', methods=['POST'])
+@variety.route('/varieties/<int:variety_id>', methods=['PATCH'])
 @jwt_required()
 @requires_permission("MaintainVarieties")
-def delete():
+def update(variety_id: int):
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      variety_id = params['variety_id']
 
       if variety_id:
-        # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_variety WHERE variety_id = %s", (variety_id,))
-        if row is None:
-          return gs_make_response(message='Invalid variety',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=400)
-        else:
-          qry = gsdb.execute("DELETE FROM gs_variety WHERE variety_id = %s", (variety_id,))
-          return gs_make_response(message=f'Variety #{variety_id} deleted')
-          
-      else:
-        return gs_make_response(message='Invalid request',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
-  except Exception as e:
-    logger.exception(e)
-    return gs_make_response(message='Error processing request',
-                            status=GStatusCode.ERROR,
-                            httpstatus=500)
+        variety = variety_service.get(variety_id)
 
-@variety.route('/variety/update', methods=['POST'])
-@jwt_required()
-@requires_permission("MaintainVarieties")
-def update():
-  try:
-    json_data = {}
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      variety_id = params['id']
-      name, description, thumbnail_url = formatParams(params)
-
-      if variety_id and name and description and thumbnail_url:
-        # Check if exists
-        row = gsdb.fetchone("SELECT * FROM gs_variety WHERE variety_id = %s", (variety_id,))
-
-        if row is None:
-          return gs_make_response(message=f'Variety {name} does not exist',
+        if variety is None:
+          return gs_make_response(message='Variety not found',
                                   status=GStatusCode.ERROR,
                                   httpstatus=404)
-        else:
-          qry = gsdb.execute("UPDATE gs_variety SET (name, description, thumbnail_url) = (%s, %s, %s) WHERE variety_id = %s", (name, description, thumbnail_url, variety_id,))
-          headers = {'Location': url_for('variety.get', variety_id=variety_id)}
-          return gs_make_response(message=f'Variety {name} successfully updated',
-                    httpstatus=201,
-                    headers=headers,
-                    data=json_data)
+        if 'name' in params:
+          variety_search = variety_service.search(params['name'])
+          if variety_search is not None and variety_search['id'] != variety_id:
+            return gs_make_response(message='That variety already exists. Try a different name',
+                      status=GStatusCode.ERROR,
+                      httpstatus=400)
+
+        variety_service.update(variety_id, format_params(params, variety))
+        variety = variety_service.get(variety_id)
+
+        headers = {'Location': url_for('variety.get', variety_id=variety_id)}
+        return gs_make_response(message=f'Variety #{variety_id} updated',
+                                httpstatus=201,
+                                headers=headers,
+                                data=variety)
 
       else:
         return gs_make_response(message='Invalid request',
@@ -172,45 +166,23 @@ def update():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@variety.route('/variety/<int:variety_id>', methods=['GET'])
-@jwt_required()
-@requires_permission("ViewVarieties")
-def get_variety(variety_id):
-  try:
-    json_data = {}
-    row = gsdb.fetchone("""SELECT variety_id, name, description, thumbnail_url FROM gs_variety WHERE variety_id = %s""", (variety_id,))
-    if variety:
-      json_data = formatVariety(row)
-      return gs_make_response(data=json_data)
-
-    else:
-      return gs_make_response(message='Invalid variety ID',
-                              status=GStatusCode.ERROR,
-                              httpstatus=400)
-  except Exception as e:
-    logger.exception(e)
-    return gs_make_response(message='Unable to retrieve variety. Please try again',
-                            status=GStatusCode.ERROR,
-                            httpstatus=500)
-
-@variety.route('/variety/<int:variety_id>/ingredients', methods=['GET'])
+@variety.route('/varieties/<int:variety_id>/ingredients', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewVarieties")
 def get_all_ingredients(variety_id):
   try:
-    # Get route parameters
-    page = request.args.get('page')
-    limit = request.args.get('limit')
+    variety = variety_service.get(variety_id, generate_filters(VARIETY_FILTERS, request.args))
 
-    if limit is None: limit = PER_PAGE
-    else: limit = int(limit)
+    if variety is None:
+      return gs_make_response(message='Variety not found',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+    else:
+      page, limit = create_pagination_params(request.args)
 
-    if page is None: page = 1
-    else: page = int(page)
+      json_data, total_rows, total_pages = variety_service.get_ingredients_paginated(variety_id, page, limit)
 
-    json_data, total_rows, total_pages = getVarietyIngredients(variety_id, page, limit)
-
-    return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
+      return gs_make_response(data=json_data, totalrowcount=total_rows, totalpages=total_pages)
 
   except Exception as e:
     logger.exception(e)
@@ -218,39 +190,39 @@ def get_all_ingredients(variety_id):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@variety.route('/variety/addIngredient', methods=['POST'])
+@variety.route('/varieties/<int:variety_id>/ingredients', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainVarieties")
-def add_ingredient():
+def add_ingredient(variety_id: int):
   try:
-    json_data = {}
     if request.json:
       data = json.loads(request.data)
       params = data['params']
-      variety_id = params['variety_id']
       ingredient_id = params['ingredient_id']
 
-      if variety_id and ingredient_id:
-        # Check if exists
-        variety = gsdb.fetchone("SELECT * FROM gs_variety WHERE variety_id = %s", (variety_id,))
-        ingredient = gsdb.fetchone("SELECT * FROM gs_ingredient WHERE ingredient_id = %s", (ingredient_id,))
-        is_existing = gsdb.fetchone("SELECT * FROM gs_variety_ingredient WHERE variety_id = %s AND ingredient_id = %s", (variety_id, ingredient_id,))
-        if variety is None or ingredient is None:
-          return gs_make_response(message='Invalid variety or invalid ingredient',
+      if ingredient_id is not None and variety_id is not None:
+        variety = variety_service.get(variety_id)
+        ingredient = ingredient_service.get(ingredient_id)
+        
+        if variety is None:
+          return gs_make_response(message='Variety not found',
                                   status=GStatusCode.ERROR,
-                                  httpstatus=400)
+                                  httpstatus=404)
+        if ingredient is None:
+          return gs_make_response(message='Ingredient not found',
+                                  status=GStatusCode.ERROR,
+                                  httpstatus=404)
         else:
+          is_existing = variety_service.ingredient_exists(variety_id, ingredient_id)
+
           if not is_existing:
-            qry = gsdb.execute("""INSERT INTO gs_variety_ingredient 
-                                  (tenant_id, variety_id, ingredient_id)
-                                  VALUES 
-                                  (%s, %s, %s)""", (app.config['TENANT_ID'], variety_id, ingredient_id,))
-            return gs_make_response(message=f'Ingredient #{ingredient_id} added to variety')
+            variety_service.add_ingredient(variety_id, ingredient_id)
+            
+            return gs_make_response(message=f'Ingredient #{ingredient_id} added to variety', httpstatus=201)
           else:
-            return gs_make_response(message=f'Ingredient already exists on variety',
+            return gs_make_response(message='Ingredient already exists on variety',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
-
       else:
         return gs_make_response(message='Invalid request',
                                 status=GStatusCode.ERROR,
@@ -261,34 +233,21 @@ def add_ingredient():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@variety.route('/variety/deleteIngredient', methods=['POST'])
+@variety.route('/varieties/<int:variety_id>/ingredients/<int:ingredient_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainVarieties")
-def delete_ingredient():
+def delete_ingredient(variety_id: int, ingredient_id: int):
   try:
-    json_data = {}
-    if request.json:
-      data = json.loads(request.data)
-      params = data['params']
-      variety_id = params['variety_id']
-      ingredient_id = params['ingredient_id']
+    is_existing = variety_service.ingredient_exists(variety_id, ingredient_id)
 
-      if variety_id and ingredient_id:
-        # Check if exists
-        variety = gsdb.fetchone("SELECT * FROM gs_variety WHERE variety_id = %s", (variety_id,))
-        variety_ingredient = gsdb.fetchone("SELECT * FROM gs_variety_ingredient WHERE variety_id = %s AND ingredient_id = %s", (variety_id, ingredient_id,))
-        if variety is None or variety_ingredient is None:
-          return gs_make_response(message='Invalid variety or invalid ingredient',
-                                  status=GStatusCode.ERROR,
-                                  httpstatus=400)
-        else:
-          qry = gsdb.execute("DELETE FROM gs_variety_ingredient WHERE variety_id = %s AND ingredient_id = %s", (variety_id, ingredient_id,))
-          return gs_make_response(message=f'Ingredient #{ingredient_id} deleted from variety')
-          
-      else:
-        return gs_make_response(message='Invalid request',
-                                status=GStatusCode.ERROR,
-                                httpstatus=400)
+    if is_existing is None:
+      return gs_make_response(message='Variety ingredient does not exist',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+    else:
+      variety_service.delete_ingredient(variety_id, ingredient_id)
+      return gs_make_response(message=f'Ingredient #{ingredient_id} deleted from variety')
+
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',

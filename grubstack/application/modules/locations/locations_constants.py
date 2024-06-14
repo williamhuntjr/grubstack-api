@@ -16,5 +16,4 @@ LOCATION_FILTERS = ['showMenus', 'showItems', 'isActive']
 DEFAULT_FILTERS = {
   'showMenus': False,
   'showItems': False,
-  'isActive': True
 }

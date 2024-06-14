@@ -1,7 +1,8 @@
-from grubstack import app, gsdb
-from math import ceil
+from grubstack import app
 
-PER_PAGE = app.config['PER_PAGE']
+from grubstack.application.utilities.reducers import field_reducer
+
+from .menus_constants import PER_PAGE
 
 def format_menu(menu: dict, items_list: list = [], filters: list = []):
   json_data = {
@@ -16,28 +17,16 @@ def format_menu(menu: dict, items_list: list = [], filters: list = []):
 
   return json_data
 
-def format_params(params: dict):
-  name = params['name']
-  description = params['description'] or ''
-  thumbnail_url = params['thumbnail_url'] or app.config['THUMBNAIL_PLACEHOLDER_IMG']
+def format_params(params: dict, menu: dict = {}):
+  name = field_reducer('name', params, menu, '')
+  description = field_reducer('description', params, menu, '')
+  thumbnail_url = field_reducer('thumbnail_url', params, menu, app.config['THUMBNAIL_PLACEHOLDER_IMG'])
 
   return (name, description, thumbnail_url)
 
-def format_item_params(params: dict):
-  price = params['price'] if 'price' in params else 0
-  sale_price = params['sale_price'] if 'sale_price' in params else 0
-  is_onsale = params['is_onsale'] if 'is_onsale' in params else False
-  
-  return (price, sale_price, is_onsale)
+def format_item_params(params: dict, item: dict = {}):
+  price = field_reducer('price', params, item, 'f')
+  sale_price = field_reducer('sale_price', params, item, 'f')
+  is_onsale = field_reducer('is_onsale', params, item, 'f')
 
-def format_menu_item(item: dict):
-  json_data = {
-    "id": item['item_id'],
-    "name": item['name'],
-    "description": item['description'],
-    "thumbnail_url": item['thumbnail_url'],
-    "price": item['price'],
-    "sale_price": item['sale_price'],
-    "is_onsale": item['is_onsale']
-  }
-  return json_data
+  return (price, sale_price, is_onsale)

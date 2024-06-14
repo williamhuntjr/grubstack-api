@@ -1,6 +1,6 @@
 import logging, json
 
-from flask import Blueprint, request
+from flask import Blueprint, url_for, request
 
 from grubstack import app, config
 from grubstack.utilities import gs_make_response
@@ -57,10 +57,10 @@ def create():
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
       else:
-        ingredient_service.create(format_params(params))
-        ingredient = ingredient_service.search(name)
+        ingredient_id = ingredient_service.create(format_params(params))[0]
+        ingredient = ingredient_service.get(ingredient_id)
 
-        headers = {'Location': url_for('ingredient.get', ingredient_id=ingredient['id'])}
+        headers = {'Location': url_for('ingredient.get', ingredient_id=ingredient_id)}
         return gs_make_response(message='Ingredient created successfully',
                               httpstatus=201,
                               headers=headers,
@@ -80,7 +80,7 @@ def create():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@ingredient.route('/ingredients/<string:ingredient_id>', methods=['GET'])
+@ingredient.route('/ingredients/<int:ingredient_id>', methods=['GET'])
 @jwt_required()
 @requires_permission("ViewIngredients")
 def get(ingredient_id: int):
@@ -100,7 +100,7 @@ def get(ingredient_id: int):
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-@ingredient.route('/ingredients/<string:ingredient_id>', methods=['DELETE'])
+@ingredient.route('/ingredients/<int:ingredient_id>', methods=['DELETE'])
 @jwt_required()
 @requires_permission("MaintainIngredients")
 def delete(ingredient_id: int):

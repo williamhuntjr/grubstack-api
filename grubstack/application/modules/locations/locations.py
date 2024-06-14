@@ -66,10 +66,10 @@ def create():
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
       else:
-        location_service.create(format_params(params))
-        location = location_service.search(name)
+        location_id = location_service.create(format_params(params))[0]
+        location = location_service.get(location_id)
 
-        headers = {'Location': url_for('location.get', location_id=location['id'])}
+        headers = {'Location': url_for('location.get', location_id=location_id)}
         return gs_make_response(message='Location created successfully',
                               httpstatus=201,
                               headers=headers,

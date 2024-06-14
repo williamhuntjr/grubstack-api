@@ -2,7 +2,7 @@ from grubstack import app
 
 from grubstack.application.utilities.reducers import field_reducer
 
-PER_PAGE = app.config['PER_PAGE']
+from .ingredients_constants import PER_PAGE
 
 def format_ingredient(ingredient: dict, filters: list = []):
   json_data = {
@@ -22,6 +22,15 @@ def format_ingredient(ingredient: dict, filters: list = []):
     "fiber": ingredient['fiber'],
     "price": ingredient['price']
   }
+
+  if 'is_optional' in ingredient:
+    json_data['is_optional'] = ingredient['is_optional']
+
+  if 'is_addon' in ingredient:
+    json_data['is_addon'] = ingredient['is_addon']
+
+  if 'is_extra' in ingredient:
+    json_data['is_extra'] = ingredient['is_extra']
 
   return json_data
 

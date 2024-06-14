@@ -1,4 +1,4 @@
-from pypika import Query, Table, Tables, Order, functions, Parameter
+from pypika import PostgreSQLQuery, Query, Table, Tables, Order, functions, Parameter
 
 from grubstack import app, gsdb, gsprod
 
@@ -86,7 +86,7 @@ class LocationService:
     name, address1, city, state, postal, location_type, phone_number, is_active = params
 
     gs_location = Table('gs_location')
-    qry = Query.into(
+    qry = PostgreSQLQuery.into(
       gs_location
     ).columns(
       gs_location.tenant_id,
@@ -108,9 +108,9 @@ class LocationService:
       Parameter('%s'),
       Parameter('%s'),
       Parameter('%s')
-    )
+    ).returning('location_id')
 
-    return gsdb.execute(str(qry), (name, address1, city, state, postal, location_type, phone_number, is_active,))
+    return gsdb.fetchone(str(qry), (name, address1, city, state, postal, location_type, phone_number, is_active,))
 
   def search(self, name: str, filters: list = []):
     if len(filters) <= 0:

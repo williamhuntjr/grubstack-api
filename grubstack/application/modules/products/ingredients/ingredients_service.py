@@ -1,4 +1,4 @@
-from pypika import Query, Table, Order, Parameter
+from pypika import PostgreSQLQuery, Query, Table, Order, Parameter
 
 from grubstack import app, gsdb
 from grubstack.application.utilities.filters import generate_paginated_data
@@ -136,7 +136,7 @@ class IngredientService:
     name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price = params
 
     gs_ingredient = Table('gs_ingredient')
-    qry = Query.into(
+    qry = PostgreSQLQuery.into(
       gs_ingredient
     ).columns(
       gs_ingredient.tenant_id,
@@ -170,6 +170,6 @@ class IngredientService:
       Parameter('%s'),
       Parameter('%s'),
       Parameter('%s')
-    )
+    ).returning('ingredient_id')
 
-    return gsdb.execute(str(qry), (name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price,))
+    return gsdb.fetchone(str(qry), (name, description, thumbnail_url, calories, fat, saturated_fat, trans_fat, cholesterol, sodium, carbs, protein, sugar, fiber, price,))

@@ -5,8 +5,7 @@ PER_PAGE = app.config['PER_PAGE']
 REQUIRED_FIELDS = [
   'name'
 ]
-ITEM_FILTERS = ['showVarieties', 'showIngredients']
+VARIETY_FILTERS = ['showIngredients']
 DEFAULT_FILTERS = {
-  'showIngredients': True,
-  'showVarieties': False
+  'showIngredients': False
 }
