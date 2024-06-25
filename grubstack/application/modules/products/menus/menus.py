@@ -1,4 +1,3 @@
-from math import ceil
 import logging, json
 
 from flask import Blueprint, url_for, request

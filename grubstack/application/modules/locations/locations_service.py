@@ -220,9 +220,15 @@ class LocationService:
     menus = self.get_menus(store_id)
 
     menus_list = []
+    items_list = []
     if menus != None:
       for menu in menus:
-        menus_list.append(format_menu(menu))
+        items = self.get_menu_items(menu['menu_id'])
+
+        for item in items:
+          items_list.append(format_item(item))
+
+        menus_list.append(format_menu(menu, items_list, {"showItems": True}))
 
     json_data, total_rows, total_pages = generate_paginated_data(menus_list, page, limit)
 

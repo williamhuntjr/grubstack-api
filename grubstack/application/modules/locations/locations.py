@@ -38,7 +38,6 @@ def get_all():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
-# TODO: add required fields exception
 @location.route('/locations', methods=['POST'])
 @jwt_required()
 @requires_permission("MaintainLocations")
