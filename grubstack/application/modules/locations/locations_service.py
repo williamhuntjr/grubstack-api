@@ -3,6 +3,7 @@ from pypika import PostgreSQLQuery, Query, Table, Tables, Order, functions, Para
 from grubstack import app, gsdb, gsprod
 
 from grubstack.application.modules.products.menus.menus_utilities import format_menu
+from grubstack.application.modules.restaurant.restaurant_utilities import format_order_type
 from grubstack.application.utilities.filters import generate_paginated_data
 
 from .locations_utilities import format_location
@@ -338,3 +339,76 @@ class LocationService:
       return result[0]
     
     return DEFAULT_LOCATION_LIMIT
+
+  def get_order_types(self, location_id: int):
+    gs_order_type, gs_location_order_type = Tables('gs_order_type', 'gs_location_order_type')
+    qry = Query.from_(
+      gs_location_order_type
+    ).inner_join(
+      gs_order_type
+    ).on(
+      gs_order_type.order_type_id == gs_location_order_type.order_type_id
+    ).select(
+      gs_location_order_type.order_type_id,
+      gs_order_type.name,
+      gs_order_type.description,
+    ).where(
+      gs_location_order_type.location_id == Parameter('%s')
+    ).orderby(
+      gs_order_type.name, order=Order.asc
+    )
+
+    order_types = gsdb.fetchall(str(qry), (location_id,))
+
+    order_types_list = []
+    for order_type in order_types:
+      order_types_list.append(format_order_type(order_type))
+    
+    return order_types_list
+
+  def order_type_exists(self, location_id: int, order_type_id: int):
+    gs_location_order_type = Table('gs_location_order_type')
+    qry = Query.from_(
+      gs_location_order_type
+    ).select(
+      '*'
+    ).where(
+      gs_location_order_type.location_id == location_id
+    ).where(
+      gs_location_order_type.order_type_id == order_type_id
+    )
+  
+    order_type = gsdb.fetchone(str(qry))
+
+    if order_type is not None:
+      return True
+    
+    return False
+
+  def delete_order_type(self, location_id: int, order_type_id: int):
+    gs_location_order_type = Table('gs_location_order_type')
+    qry = Query.from_(
+      gs_location_order_type
+    ).delete().where(
+      gs_location_order_type.location_id == Parameter('%s')
+    ).where(
+      gs_location_order_type.order_type_id == Parameter('%s')
+    )
+
+    gsdb.execute(str(qry), (location_id, order_type_id,))
+
+  def add_order_type(self, location_id: int, order_type_id: int):
+    gs_location_order_type = Table('gs_location_order_type')
+    qry = Query.into(
+      gs_location_order_type
+    ).columns(
+      gs_location_order_type.tenant_id,
+      gs_location_order_type.location_id,
+      gs_location_order_type.order_type_id
+    ).insert(
+      app.config['TENANT_ID'],
+      Parameter('%s'),
+      Parameter('%s')
+    )
+
+    gsdb.execute(str(qry), (location_id, order_type_id,))

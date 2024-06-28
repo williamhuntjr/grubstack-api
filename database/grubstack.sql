@@ -43,6 +43,19 @@ CREATE TABLE public.gs_permission (
 );
 ALTER TABLE public.gs_permission OWNER TO grubstack;
 
+CREATE TABLE public.gs_order_type (
+    order_type_id SERIAL PRIMARY KEY NOT NULL,
+    name character varying(64) NOT NULL,
+    description character varying(255)
+);
+ALTER TABLE public.gs_order_type OWNER TO grubstack;
+
+CREATE TABLE public.gs_location_order_type (
+    tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
+    location_id integer NOT NULL,
+    order_type_id integer NOT NULL
+);
+ALTER TABLE public.gs_location_order_type OWNER TO grubstack;
 
 CREATE TABLE public.gs_user_permission (
     tenant_id UUID NOT NULL REFERENCES gs_tenant (tenant_id) ON DELETE RESTRICT,
@@ -246,6 +259,7 @@ ALTER TABLE public.gs_restaurant_menu OWNER TO grubstack;
 
 ALTER TABLE gs_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_tenant_property ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gs_location_order_type ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_permission ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_restaurant ENABLE ROW LEVEL SECURITY;
@@ -268,6 +282,7 @@ ALTER TABLE gs_restaurant_employee ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gs_restaurant_menu ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE gs_log FORCE ROW LEVEL SECURITY;
+ALTER TABLE gs_location_order_type FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_tenant_property FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_role FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_user_permission FORCE ROW LEVEL SECURITY;
@@ -290,6 +305,7 @@ ALTER TABLE gs_restaurant_employee FORCE ROW LEVEL SECURITY;
 ALTER TABLE gs_restaurant_menu FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_policy ON gs_log USING (tenant_id = current_setting('app.tenant_id')::UUID);
+CREATE POLICY tenant_isolation_policy ON gs_location_order_type USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_tenant_property USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_user_role USING (tenant_id = current_setting('app.tenant_id')::UUID);
 CREATE POLICY tenant_isolation_policy ON gs_user_permission USING (tenant_id = current_setting('app.tenant_id')::UUID);

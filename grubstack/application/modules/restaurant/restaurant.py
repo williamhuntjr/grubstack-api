@@ -80,4 +80,18 @@ def update_property():
                             status=GStatusCode.ERROR,
                             httpstatus=500)
 
+@restaurant.route('/restaurant/order-types', methods=['GET'])
+@jwt_required()
+@requires_permission('MaintainRestaurant')
+def get_order_types():
+  try:
+    order_types = restaurant_service.get_order_types()
+    return gs_make_response(data=order_types)
+
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Unable to retrieve order types. Please try again',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
 app.register_blueprint(restaurant, url_prefix=config.get('general', 'urlprefix', fallback='/'))

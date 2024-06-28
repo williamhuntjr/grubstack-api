@@ -10,6 +10,7 @@ from grubstack.authentication import jwt_required, requires_permission
 from grubstack.application.utilities.request import verify_params
 from grubstack.application.utilities.filters import generate_filters, create_pagination_params
 from grubstack.application.modules.products.menus.menus_service import MenuService
+from grubstack.application.modules.restaurant.restaurant_service import RestaurantService
 
 from .locations_utilities import format_params
 from .locations_constants import LOCATION_FILTERS, REQUIRED_FIELDS
@@ -21,6 +22,7 @@ logger = logging.getLogger('grubstack')
 
 location_service = LocationService()
 menu_service = MenuService()
+restaurant_service = RestaurantService()
 
 @location.route('/locations', methods=['GET'])
 @jwt_required()
@@ -255,6 +257,84 @@ def delete_menu(location_id: int, menu_id: int):
       location_service.delete_menu(location_id, menu_id)
       return gs_make_response(message=f'Menu #{menu_id} deleted from location')
 
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Error processing request',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
+@location.route('/locations/<int:location_id>/order-types', methods=['GET'])
+@jwt_required()
+@requires_permission("ViewLocations")
+def get_order_types(location_id: int):
+  try:
+    order_types = location_service.get_order_types(location_id)
+    return gs_make_response(data=order_types)
+
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Unable to retrieve order types for location.',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
+@location.route('/locations/<int:location_id>/order-types/<int:order_type_id>', methods=['DELETE'])
+@jwt_required()
+@requires_permission("MaintainLocations")
+def delete_order_type(location_id: int, order_type_id: int):
+  try:
+    is_existing = location_service.order_type_exists(location_id, order_type_id)
+
+    if is_existing is None:
+      return gs_make_response(message='Location order type does not exist',
+                              status=GStatusCode.ERROR,
+                              httpstatus=404)
+    else:
+      location_service.delete_order_type(location_id, order_type_id)
+      return gs_make_response(message=f'Order type #{order_type_id} deleted from location')
+
+  except Exception as e:
+    logger.exception(e)
+    return gs_make_response(message='Error processing request',
+                            status=GStatusCode.ERROR,
+                            httpstatus=500)
+
+@location.route('/locations/<int:location_id>/order-types', methods=['POST'])
+@jwt_required()
+@requires_permission("MaintainLocations")
+def add_order_type(location_id: int):
+  try:
+    if request.json:
+      data = json.loads(request.data)
+      params = data['params']
+      order_type_id = params['order_type_id']
+
+      if location_id is not None and order_type_id is not None:
+        location = location_service.get(location_id)
+        order_type = restaurant_service.get_order_type(order_type_id)
+
+        is_existing = location_service.order_type_exists(location_id, order_type_id)
+        
+        if location is None:
+          return gs_make_response(message='Location not found',
+                                  status=GStatusCode.ERROR,
+                                  httpstatus=404)
+        if order_type is None:
+          return gs_make_response(message='Order type not found',
+                                  status=GStatusCode.ERROR,
+                                  httpstatus=404)
+        else:
+          if not is_existing:
+            location_service.add_order_type(location_id, order_type_id)
+            
+            return gs_make_response(message=f'Order type #{order_type_id} added to location', httpstatus=201)
+          else:
+            return gs_make_response(message='Order type already exists on location',
+                                    status=GStatusCode.ERROR,
+                                    httpstatus=400)
+      else:
+        return gs_make_response(message='Invalid request',
+                                status=GStatusCode.ERROR,
+                                httpstatus=400)
   except Exception as e:
     logger.exception(e)
     return gs_make_response(message='Error processing request',
