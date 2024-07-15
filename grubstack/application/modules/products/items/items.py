@@ -26,7 +26,7 @@ variety_service = VarietyService()
 
 @item.route('/items', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewItems")
+@requires_permission("ViewItems", "MaintainItems")
 def get_all():
   try:
     page, limit = create_pagination_params(request.args)
@@ -86,7 +86,7 @@ def create():
 
 @item.route('/items/<int:item_id>', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewItems")
+@requires_permission("ViewItems", "MaintainItems")
 def get(item_id: int):
   try:
     item = item_service.get(item_id, generate_filters(ITEM_FILTERS, request.args))
@@ -170,7 +170,7 @@ def update(item_id: int):
 
 @item.route('/items/<int:item_id>/ingredients', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewItems")
+@requires_permission("ViewItems", "MaintainItems")
 def get_all_ingredients(item_id: int):
   try:
     item = item_service.get(item_id, generate_filters(ITEM_FILTERS, request.args))
@@ -298,7 +298,7 @@ def delete_ingredient(item_id: int, ingredient_id: int):
 
 @item.route('/items/<int:item_id>/varieties', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewItems")
+@requires_permission("ViewItems", "MaintainItems")
 def get_all_varieties(item_id: str):
   try:
     item = item_service.get(item_id, generate_filters(ITEM_FILTERS, request.args))

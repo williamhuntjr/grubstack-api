@@ -19,7 +19,7 @@ media_library_service = MediaLibraryService()
 
 @media_library.route('/media-library', methods=['GET'])
 @jwt_required()
-@requires_permission('ViewMediaLibrary')
+@requires_permission("ViewMediaLibrary", "MaintainMediaLibrary")
 def get_all():
   try:
     page, limit = create_pagination_params(request.args)
@@ -36,7 +36,7 @@ def get_all():
 
 @media_library.route('/media-library', methods=['POST'])
 @jwt_required()
-@requires_permission('MaintainMediaLibrary')
+@requires_permission("MaintainMediaLibrary")
 def upload():
   try:
     if 'file' not in request.files:

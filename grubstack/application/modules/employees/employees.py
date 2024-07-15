@@ -22,7 +22,7 @@ employee_service = EmployeeService()
 
 @employee.route('/employees', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewEmployees")
+@requires_permission("ViewEmployees", "MaintainEmployees")
 def get_all():
   try:
     page, limit = create_pagination_params(request.args)
@@ -80,7 +80,7 @@ def create():
 
 @employee.route('/employees/<int:employee_id>', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewEmployees")
+@requires_permission("ViewEmployees", "MaintainEmployees")
 def get(employee_id: int):
   try:
     employee = employee_service.get(employee_id, generate_filters(LOCATION_FILTERS, request.args))

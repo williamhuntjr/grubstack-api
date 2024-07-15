@@ -138,6 +138,40 @@ def requires_token(f):
     return f(*args, **kwargs)
   return decorated
 
+def requires_all_permissions(*expected_args):
+  def decorator(func):
+    @wraps(func)
+    def permissionsrequired(*args, **kwargs):
+      user_id = get_jwt_identity()
+      if user_id != None:
+        permissions = []  
+        row = gsprod.fetchall("SELECT f.permission_id, name FROM gs_user_permission f LEFT JOIN gs_permission i USING (permission_id) WHERE f.user_id = %s AND f.tenant_id = %s ORDER BY name ASC", (user_id, app.config['TENANT_ID'],))
+        if row != None:
+          for permission in row:
+            permissions.append(permission['name'])
+        if config.getboolean('logging', 'log_requests'):
+          logger.info(f"[user:{user if user is not None else 'Anonymous'}] [client:{request.remote_addr}] [request:{request}]")
+        is_owner = gsprod.fetchone("SELECT is_owner FROM gs_user_tenant WHERE tenant_id = %s AND user_id = %s and is_owner = 't'", (app.config['TENANT_ID'], user_id,))
+        if is_owner != None:
+          return func(*args, **kwargs)
+
+        total_permissions = 0
+        has_permissions = 0
+        for expected_arg in expected_args:
+          total_permissions = total_permissions + 1
+          if expected_arg in permissions:
+            has_permissions = has_permissions + 1
+        if total_permissions == has_permissions:
+          return func(*args, **kwargs)
+
+      body = request.get_data().decode('utf-8')
+      logger.error(f'[http:403] [user:{user_id}] [client:{request.remote_addr}] [request:{request.url}] [body:{body}]')
+      return gs_make_response(message='Forbidden',
+                              status=GStatusCode.ERROR,
+                              httpstatus=403)
+    return permissionsrequired
+  return decorator
+
 def requires_permission(*expected_args):
   def decorator(func):
     @wraps(func)
@@ -162,7 +196,7 @@ def requires_permission(*expected_args):
             permissions.append(permission['name'])
         if config.getboolean('logging', 'log_requests'):
           logger.info(f"[user:{user if user is not None else 'Anonymous'}] [client:{request.remote_addr}] [request:{request}]")
-        is_owner = gsprod.fetchone("SELECT is_owner FROM gs_user_tenant WHERE tenant_id = %s AND user_id = %s", (app.config['TENANT_ID'], user_id,))
+        is_owner = gsprod.fetchone("SELECT is_owner FROM gs_user_tenant WHERE tenant_id = %s AND user_id = %s and is_owner = 't'", (app.config['TENANT_ID'], user_id,))
         if is_owner != None:
           return func(*args, **kwargs)
         for expected_arg in expected_args:

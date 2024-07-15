@@ -22,7 +22,7 @@ ingredient_service = IngredientService()
 
 @ingredient.route('/ingredients', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewIngredients")
+@requires_permission("ViewIngredients", "MaintainIngredients")
 def get_all():
   try:
     page, limit = create_pagination_params(request.args)
@@ -82,7 +82,7 @@ def create():
 
 @ingredient.route('/ingredients/<int:ingredient_id>', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewIngredients")
+@requires_permission("ViewIngredients", "MaintainIngredients")
 def get(ingredient_id: int):
   try:
     ingredient = ingredient_service.get(ingredient_id, generate_filters(INGREDIENT_FILTERS, request.args))

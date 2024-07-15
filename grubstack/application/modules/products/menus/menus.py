@@ -24,7 +24,7 @@ item_service = ItemService()
 
 @menu.route('/menus', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewMenus")
+@requires_permission("ViewMenus", "MaintainMenus")
 def get_all():
   try:
     page, limit = create_pagination_params(request.args)
@@ -85,7 +85,7 @@ def create():
 
 @menu.route('/menus/<int:menu_id>', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewMenus")
+@requires_permission("ViewMenus", "MaintainMenus")
 def get(menu_id: int, showVarieties: bool = False):
   try:
     menu = menu_service.get(menu_id, DEFAULT_FILTERS)
@@ -170,7 +170,7 @@ def update(menu_id: int):
 
 @menu.route('/menus/<int:menu_id>/items', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewMenus")
+@requires_permission("ViewMenus", "MaintainMenus")
 def get_all_items(menu_id: int):
   try:
     menu = menu_service.get(menu_id)

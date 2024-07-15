@@ -20,6 +20,19 @@ def format_location(location: dict, menus_list: list = [], filters: list = []):
 
   return json_data
 
+def format_work_hour(work_hour: dict):
+  json_data = {
+    "working_hour_type_id": work_hour['working_hour_type_id'],
+    "day": work_hour['day'],
+    "open_hour": work_hour['open_hour'],
+    "open_minute": work_hour['open_minute'],
+    "close_hour": work_hour['close_hour'],
+    "close_minute": work_hour['close_minute'],
+    "is_open": work_hour['is_open'],
+  }
+
+  return json_data
+
 def format_params(params: dict, location: dict = {}):
   name = field_reducer('name', params, location, '')
   address1 = field_reducer('address1', params, location, '')
@@ -31,3 +44,22 @@ def format_params(params: dict, location: dict = {}):
   is_active = field_reducer('is_active', params, location, '')
 
   return (name, address1, city, state, postal, location_type, phone_number, is_active)
+
+def format_work_hour_params(params: dict):
+  day = params['day']
+  open_hour = params['open_hour']
+  open_minute = params['open_minute']
+  close_hour = params['close_hour']
+  close_minute = params['close_minute']
+  is_open = params['is_open']
+
+  return (day, open_hour, open_minute, close_hour, close_minute, is_open)
+
+def format_property(location_property: dict = {}):
+  json_data = {
+    "location_id": location_property['location_id'],
+    "key": location_property['key'],
+    "value": location_property['value'],
+  }
+
+  return json_data

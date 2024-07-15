@@ -24,7 +24,7 @@ ingredient_service = IngredientService()
 
 @variety.route('/varieties', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewVarieties")
+@requires_permission("ViewVarieties", "MaintainVarieties")
 def get_all():
   try:
     page, limit = create_pagination_params(request.args)
@@ -84,7 +84,7 @@ def create():
 
 @variety.route('/varieties/<int:variety_id>', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewVarieties")
+@requires_permission("ViewVarieties", "MaintainVarieties")
 def get(variety_id: int):
   try:
     variety = variety_service.get(variety_id, generate_filters(VARIETY_FILTERS, request.args))
@@ -168,7 +168,7 @@ def update(variety_id: int):
 
 @variety.route('/varieties/<int:variety_id>/ingredients', methods=['GET'])
 @jwt_required()
-@requires_permission("ViewVarieties")
+@requires_permission("ViewVarieties", "MaintainVarieties")
 def get_all_ingredients(variety_id):
   try:
     variety = variety_service.get(variety_id, generate_filters(VARIETY_FILTERS, request.args))
