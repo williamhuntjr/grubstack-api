@@ -50,13 +50,19 @@ def create():
 
       verify_params(params, REQUIRED_FIELDS)
 
-      name, description, thumbnail_url = format_params(params)
+      name, description, thumbnail_url, slug = format_params(params)
       
       name = params['name']
       menu = menu_service.search(name)
 
       if menu is not None:
-        return gs_make_response(message='That menu already exists. Try a different name',
+        return gs_make_response(message='A menu with that name already exists. Try a different name',
+                                status=GStatusCode.ERROR,
+                                httpstatus=400)
+      
+      menu_search = menu_service.get_by_slug(slug)
+      if menu_search is not None:
+        return gs_make_response(message='A menu with that slug already exists. Try a different slug',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
       else:
@@ -144,9 +150,16 @@ def update(menu_id: int):
         if 'name' in params:
           menu_search = menu_service.search(params['name'])
           if menu_search is not None and menu_search['id'] != menu_id:
-            return gs_make_response(message='That menu already exists. Try a different name',
+            return gs_make_response(message='A menu with that name already exists. Try a different name',
                       status=GStatusCode.ERROR,
                       httpstatus=400)
+
+        if 'slug' in params:
+          menu_search = menu_service.get_by_slug(params['slug'])
+          if menu_search is not None and menu_search['id'] != menu_id:
+            return gs_make_response(message='A menu with that slug already exists. Try a different slug',
+                                    status=GStatusCode.ERROR,
+                                    httpstatus=400)
 
         menu_service.update(menu_id, format_params(params, menu))
         menu = menu_service.get(menu_id)
@@ -222,7 +235,7 @@ def add_item(menu_id: str):
 
             return gs_make_response(message=f'Item #{item_id} added to menu', httpstatus=201)
           else:
-            return gs_make_response(message=f'Item already exists on menu',
+            return gs_make_response(message=f'The provided Item already exists on the specified menu',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:

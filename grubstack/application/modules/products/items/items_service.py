@@ -74,10 +74,29 @@ class ItemService:
     ).select(
       '*'
     ).where(
-      gs_item.name == name
+      gs_item.name == Parameter('%s')
     )
 
-    item = gsdb.fetchone(str(qry))
+    item = gsdb.fetchone(str(qry), (name,))
+
+    if item is not None:
+      filtered_data = self.apply_filters(item, filters)
+      return filtered_data
+
+    else:
+      return None
+
+  def get_by_slug(self, slug: str, filters: list = []):
+    gs_item = Table('gs_item')
+    qry = Query.from_(
+      gs_item
+    ).select(
+      '*'
+    ).where(
+      gs_item.slug == Parameter('%s')
+    )
+
+    item = gsdb.fetchone(str(qry), (slug,))
 
     if item is not None:
       filtered_data = self.apply_filters(item, filters)
@@ -106,7 +125,7 @@ class ItemService:
     gsdb.execute(str(qry), (item_id,))
 
   def create(self, params: dict = ()):
-    name, description, thumbnail_url = params
+    name, description, thumbnail_url, slug = params
 
     gs_item = Table('gs_item')
     qry = PostgreSQLQuery.into(
@@ -115,18 +134,20 @@ class ItemService:
       gs_item.tenant_id,
       gs_item.name,
       gs_item.description,
-      gs_item.thumbnail_url
+      gs_item.thumbnail_url,
+      gs_item.slug
     ).insert(
       app.config['TENANT_ID'],
+      Parameter('%s'),
       Parameter('%s'),
       Parameter('%s'),
       Parameter('%s')
     ).returning('item_id')
 
-    return gsdb.fetchone(str(qry), (name, description, thumbnail_url,))
+    return gsdb.fetchone(str(qry), (name, description, thumbnail_url, slug,))
 
   def update(self, item_id: int, params: dict = ()):
-    name, description, thumbnail_url = params
+    name, description, thumbnail_url, slug = params
 
     gs_item = Table('gs_item')
     qry = Query.update(
@@ -137,11 +158,13 @@ class ItemService:
       gs_item.description, Parameter('%s')
     ).set(
       gs_item.thumbnail_url, Parameter('%s')
+    ).set(
+      gs_item.slug, Parameter('%s')
     ).where(
       gs_item.item_id == Parameter('%s')
     )
 
-    return gsdb.execute(str(qry), (name, description, thumbnail_url, item_id,))
+    return gsdb.execute(str(qry), (name, description, thumbnail_url, slug, item_id,))
 
   def get_ingredients(self, item_id: int):
     gs_ingredient, gs_item_ingredient = Tables('gs_ingredient', 'gs_item_ingredient')

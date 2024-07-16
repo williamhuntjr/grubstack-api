@@ -55,7 +55,7 @@ def create():
       variety = variety_service.search(name)
 
       if variety is not None:
-        return gs_make_response(message='That variety already exists. Try a different name',
+        return gs_make_response(message='A variety with the provided name already exists. Try a different name',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
       else:
@@ -142,7 +142,7 @@ def update(variety_id: int):
         if 'name' in params:
           variety_search = variety_service.search(params['name'])
           if variety_search is not None and variety_search['id'] != variety_id:
-            return gs_make_response(message='That variety already exists. Try a different name',
+            return gs_make_response(message='A variety with the provided name already exists. Try a different name',
                       status=GStatusCode.ERROR,
                       httpstatus=400)
 
@@ -220,7 +220,7 @@ def add_ingredient(variety_id: int):
             
             return gs_make_response(message=f'Ingredient #{ingredient_id} added to variety', httpstatus=201)
           else:
-            return gs_make_response(message='Ingredient already exists on variety',
+            return gs_make_response(message='The provided Ingredient already exists on the specified variety',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:

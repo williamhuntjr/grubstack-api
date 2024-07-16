@@ -10,6 +10,7 @@ def format_menu(menu: dict, items_list: list = [], filters: list = []):
     "name": menu['name'],
     "description": menu['description'],
     "thumbnail_url": menu['thumbnail_url'],
+    "slug": menu['slug']
   }
 
   if 'showItems' in filters and filters['showItems']:
@@ -21,8 +22,9 @@ def format_params(params: dict, menu: dict = {}):
   name = field_reducer('name', params, menu, '')
   description = field_reducer('description', params, menu, '')
   thumbnail_url = field_reducer('thumbnail_url', params, menu, app.config['THUMBNAIL_PLACEHOLDER_IMG'])
+  slug = field_reducer('slug', params, menu, '')
 
-  return (name, description, thumbnail_url)
+  return (name, description, thumbnail_url, slug)
 
 def format_item_params(params: dict, item: dict = {}):
   price = field_reducer('price', params, item, 'f')

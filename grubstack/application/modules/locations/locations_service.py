@@ -15,6 +15,7 @@ def format_item(item: dict, ingredients_list = [], varieties_list: list = []):
     "name": item['name'],
     "description": item['description'],
     "thumbnail_url": item['thumbnail_url'],
+    "slug": item['slug'],
     "ingredients": ingredients_list,
     "varieties": varieties_list
   }
@@ -243,7 +244,8 @@ class LocationService:
       gs_location_menu.menu_id,
       gs_menu.name,
       gs_menu.description,
-      gs_menu.thumbnail_url
+      gs_menu.thumbnail_url,
+      gs_menu.slug
     ).where(
       gs_location_menu.location_id == Parameter('%s')
     ).orderby(
@@ -252,19 +254,18 @@ class LocationService:
 
     return gsdb.fetchall(str(qry), (location_id,))
 
-  def get_menus_paginated(self, store_id: int, page: int = 1, limit: int = PER_PAGE):
+  def get_menus_paginated(self, location_id: int, page: int = 1, limit: int = PER_PAGE):
     json_data = []
-    menus = self.get_menus(store_id)
+    menus = self.get_menus(location_id)
 
     menus_list = []
-    items_list = []
     if menus != None:
       for menu in menus:
         items = self.get_menu_items(menu['menu_id'])
 
+        items_list = []
         for item in items:
           items_list.append(format_item(item))
-
         menus_list.append(format_menu(menu, items_list, {"showItems": True}))
 
     json_data, total_rows, total_pages = generate_paginated_data(menus_list, page, limit)
@@ -283,9 +284,9 @@ class LocationService:
       gs_location_menu.menu_id == menu_id
     )
     
-    store = gsdb.fetchone(str(qry))
+    menu = gsdb.fetchone(str(qry))
 
-    if store is not None:
+    if menu is not None:
       return True
     
     return False
@@ -334,7 +335,8 @@ class LocationService:
       gs_menu_item.is_onsale,
       gs_item.name,
       gs_item.description,
-      gs_item.thumbnail_url
+      gs_item.thumbnail_url,
+      gs_item.slug
     ).where(
       gs_menu_item.menu_id == Parameter('%s')
     ).orderby(

@@ -63,7 +63,7 @@ def create():
       location = location_service.search(name)
 
       if location is not None:
-        return gs_make_response(message='That location already exists. Try a different name',
+        return gs_make_response(message='A location with the provided name already exists. Try a different name',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
       else:
@@ -152,7 +152,7 @@ def update(location_id: int):
           if 'name' in params:
             location_search = location_service.search(params['name'])
             if location_search is not None and location_search['id'] != location_id:
-              return gs_make_response(message='That location already exists. Try a different name',
+              return gs_make_response(message='A location with the provided name already exists. Try a different name',
                         status=GStatusCode.ERROR,
                         httpstatus=400)
 
@@ -230,7 +230,7 @@ def add_menu(location_id: int):
             
             return gs_make_response(message=f'Menu #{menu_id} added to location', httpstatus=201)
           else:
-            return gs_make_response(message='Menu already exists on location',
+            return gs_make_response(message='The provided menu already exists on the specified location',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:
@@ -329,7 +329,7 @@ def add_order_type(location_id: int):
             
             return gs_make_response(message=f'Order type #{order_type_id} added to location', httpstatus=201)
           else:
-            return gs_make_response(message='Order type already exists on location',
+            return gs_make_response(message='The provided Order Type already exists on the specified location',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:

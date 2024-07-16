@@ -51,7 +51,7 @@ def create():
       employee = employee_service.search(params['first_name'], params['last_name'])
 
       if employee is not None:
-        return gs_make_response(message='That employee already exists. Try a different first name and last name.',
+        return gs_make_response(message='An employee with the provided first and last name already exists. Try a different name combination',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
       else:

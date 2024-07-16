@@ -53,7 +53,7 @@ def create():
       ingredient = ingredient_service.search(name)
 
       if ingredient is not None:
-        return gs_make_response(message='That ingredient already exists. Try a different name',
+        return gs_make_response(message='An ingredient with the provided name already exists. Try a different name',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
       else:
@@ -140,7 +140,7 @@ def update(ingredient_id: int):
         if 'name' in params:
           ingredient_search = ingredient_service.search(params['name'])
           if ingredient_search is not None and ingredient_search['id'] != ingredient_id:
-            return gs_make_response(message='That ingredient already exists. Try a different name',
+            return gs_make_response(message='An ingredient with the provided name already exists. Try a different name',
                       status=GStatusCode.ERROR,
                       httpstatus=400)
 

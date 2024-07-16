@@ -51,13 +51,19 @@ def create():
 
       verify_params(params, REQUIRED_FIELDS)
 
-      name, description, thumbnail_url = format_params(params)
+      name, description, thumbnail_url, slug = format_params(params)
       
       name = params['name']
       item = item_service.search(name)
 
       if item is not None:
-        return gs_make_response(message='That item already exists. Try a different name',
+        return gs_make_response(message='An item with the provided name already exists. Try a different name',
+                                status=GStatusCode.ERROR,
+                                httpstatus=400)
+
+      item_search = item_service.get_by_slug(slug)
+      if item_search is not None:
+        return gs_make_response(message='An item with that slug already exists. Try a different slug',
                                 status=GStatusCode.ERROR,
                                 httpstatus=400)
       else:
@@ -144,9 +150,16 @@ def update(item_id: int):
         if 'name' in params:
           item_search = item_service.search(params['name'])
           if item_search is not None and item_search['id'] != item_id:
-            return gs_make_response(message='That item already exists. Try a different name',
+            return gs_make_response(message='An item with the provided name already exists. Try a different name',
                       status=GStatusCode.ERROR,
                       httpstatus=400)
+
+        if 'slug' in params:
+          item_search = item_service.get_by_slug(params['slug'])
+          if item_search is not None and item_search['id'] != item_id:
+            return gs_make_response(message='An item with that slug already exists. Try a different slug',
+                                    status=GStatusCode.ERROR,
+                                    httpstatus=400)
 
         item_service.update(item_id, format_params(params, item))
         item = item_service.get(item_id)
@@ -223,7 +236,7 @@ def add_ingredient(item_id: int):
             
             return gs_make_response(message=f'Ingredient #{ingredient_id} added to item', httpstatus=201)
           else:
-            return gs_make_response(message='Ingredient already exists on item',
+            return gs_make_response(message='The provided Ingredient already exists on the specified item',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:
@@ -351,7 +364,7 @@ def add_variety(item_id: str):
             
             return gs_make_response(message=f'Variety #{variety_id} added to item', httpstatus=201)
           else:
-            return gs_make_response(message='Variety already exists on item',
+            return gs_make_response(message='The provided Variety already exists on the specified item',
                                     status=GStatusCode.ERROR,
                                     httpstatus=400)
       else:

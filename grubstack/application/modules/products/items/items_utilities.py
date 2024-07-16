@@ -9,7 +9,8 @@ def format_item(item: dict, ingredients_list = [], varieties_list: list = [], fi
     "id": item['item_id'],
     "name": item['name'],
     "description": item['description'],
-    "thumbnail_url": item['thumbnail_url']
+    "thumbnail_url": item['thumbnail_url'],
+    "slug": item['slug']
   }
 
   if 'price' in item:
@@ -33,8 +34,9 @@ def format_params(params: dict, item: dict = {}):
   name = field_reducer('name', params, item, '')
   description = field_reducer('description', params, item, '')
   thumbnail_url = field_reducer('thumbnail_url', params, item, app.config['THUMBNAIL_PLACEHOLDER_IMG'])
+  slug = field_reducer('slug', params, item, '')
 
-  return (name, description, thumbnail_url)
+  return (name, description, thumbnail_url, slug)
  
 def format_ingredient_params(params: dict, ingredient: dict = {}):
   is_optional = field_reducer('is_optional', params, ingredient, 'f')

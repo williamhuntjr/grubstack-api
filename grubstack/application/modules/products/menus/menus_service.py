@@ -74,10 +74,29 @@ class MenuService:
     ).select(
       '*'
     ).where(
-      gs_menu.name == name
+      gs_menu.name == Parameter('%s')
     )
 
-    menu = gsdb.fetchone(str(qry))
+    menu = gsdb.fetchone(str(qry), (name,))
+
+    if menu is not None:
+      filtered_data = self.apply_filters(menu, filters)
+      return filtered_data
+
+    else:
+      return None
+
+  def get_by_slug(self, slug: str, filters: list = []):
+    gs_menu = Table('gs_menu')
+    qry = Query.from_(
+      gs_menu
+    ).select(
+      '*'
+    ).where(
+      gs_menu.slug == Parameter('%s')
+    )
+
+    menu = gsdb.fetchone(str(qry), (slug,))
 
     if menu is not None:
       filtered_data = self.apply_filters(menu, filters)
@@ -87,7 +106,7 @@ class MenuService:
       return None
 
   def create(self, params: dict = ()):
-    name, description, thumbnail_url = params
+    name, description, thumbnail_url, slug = params
 
     gs_menu = Table('gs_menu')
     qry = PostgreSQLQuery.into(
@@ -96,18 +115,20 @@ class MenuService:
       gs_menu.tenant_id,
       gs_menu.name,
       gs_menu.description,
-      gs_menu.thumbnail_url
+      gs_menu.thumbnail_url,
+      gs_menu.slug
     ).insert(
       app.config['TENANT_ID'],
+      Parameter('%s'),
       Parameter('%s'),
       Parameter('%s'),
       Parameter('%s')
     ).returning('menu_id')
 
-    return gsdb.fetchone(str(qry), (name, description, thumbnail_url,))
+    return gsdb.fetchone(str(qry), (name, description, thumbnail_url, slug,))
 
   def update(self, menu_id: int, params: dict = ()):
-    name, description, thumbnail_url = params
+    name, description, thumbnail_url, slug = params
 
     gs_menu = Table('gs_menu')
     qry = Query.update(
@@ -118,11 +139,13 @@ class MenuService:
       gs_menu.description, Parameter('%s')
     ).set(
       gs_menu.thumbnail_url, Parameter('%s')
+    ).set(
+      gs_menu.slug, Parameter('%s')
     ).where(
       gs_menu.menu_id == Parameter('%s')
     )
 
-    return gsdb.execute(str(qry), (name, description, thumbnail_url, menu_id,))
+    return gsdb.execute(str(qry), (name, description, thumbnail_url, slug, menu_id,))
 
   def delete(self, menu_id: int):
     gs_menu = Table('gs_menu')
@@ -156,6 +179,7 @@ class MenuService:
       gs_item.name,
       gs_item.description,
       gs_item.thumbnail_url,
+      gs_item.slug,
       gs_menu_item.price,
       gs_menu_item.sale_price,
       gs_menu_item.is_onsale
