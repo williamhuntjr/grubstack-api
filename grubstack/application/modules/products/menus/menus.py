@@ -94,7 +94,7 @@ def create():
 @requires_permission("ViewMenus", "MaintainMenus")
 def get(menu_id: int, showVarieties: bool = False):
   try:
-    menu = menu_service.get(menu_id, DEFAULT_FILTERS)
+    menu = menu_service.get(menu_id, generate_filters(MENU_FILTERS, request.args))
     
     if menu:
       return gs_make_response(data=menu)

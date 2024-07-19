@@ -3,7 +3,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def format_file_data(file_data: dict, filters: list = []):
+def format_file_data(file_data: dict, filters: dict = {}):
   json_data = {
     "id": file_data['file_id'],
     "name": file_data['file_name'],

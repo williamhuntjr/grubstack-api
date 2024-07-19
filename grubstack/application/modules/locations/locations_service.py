@@ -3,46 +3,34 @@ from pypika import PostgreSQLQuery, Query, Table, Tables, Order, functions, Para
 from grubstack import app, gsdb, gsprod
 
 from grubstack.application.modules.products.menus.menus_utilities import format_menu
+from grubstack.application.modules.products.items.items_utilities import format_item
+from grubstack.application.modules.products.ingredients.ingredients_utilities import format_ingredient
+from grubstack.application.modules.products.varieties.varieties_utilities import format_variety
+from grubstack.application.modules.products.items.items_service import ItemService
 from grubstack.application.modules.restaurant.restaurant_utilities import format_order_type
 from grubstack.application.utilities.filters import generate_paginated_data
 
 from .locations_utilities import format_location, format_work_hour, format_property, format_work_hour_params
 from .locations_constants import PER_PAGE, DEFAULT_FILTERS, DEFAULT_LOCATION_LIMIT
 
-def format_item(item: dict, ingredients_list = [], varieties_list: list = []):
-  json_data = {
-    "id": item['item_id'],
-    "name": item['name'],
-    "description": item['description'],
-    "thumbnail_url": item['thumbnail_url'],
-    "slug": item['slug'],
-    "ingredients": ingredients_list,
-    "varieties": varieties_list
-  }
-  
-  if 'price' in item and 'is_onsale' in item and 'sale_price' in item:
-    json_data['price'] = item['price']
-    json_data['is_onsale'] = item['is_onsale']
-    json_data['sale_price'] = item['sale_price']
-
-  return json_data
+item_service = ItemService()
 
 class LocationService:
   def __init__(self):
     pass
 
-  def apply_filters(self, location: dict, filters: list = []):
+  def apply_filters(self, location: dict, filters: dict = {}):
     if len(filters) <= 0:
       filters = DEFAULT_FILTERS
 
     menus_list = []
 
-    if 'showMenus' in filters and filters['showMenus']:
+    if 'showMenus' in filters and (filters['showMenus'] == True or filters['showMenus'] == 'true'):
       menus = self.get_menus(location['location_id'])
       if menus != None:
         for menu in menus:
           items_list = []
-          if 'showItems' in filters and filters['showItems']:
+          if 'showItems' in filters and (filters['showItems'] == True or filters['showItems'] == 'true'):
             items = self.get_menu_items(menu['menu_id'])
 
             for item in items:
@@ -52,7 +40,7 @@ class LocationService:
 
     return format_location(location, menus_list, filters)
 
-  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
+  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: dict = {}):
     if len(filters) <= 0:
       filters = DEFAULT_FILTERS
 
@@ -114,7 +102,7 @@ class LocationService:
 
     return gsdb.fetchone(str(qry), (name, address1, city, state, postal, location_type, phone_number, is_active,))
 
-  def search(self, name: str, filters: list = []):
+  def search(self, name: str, filters: dict = {}):
     if len(filters) <= 0:
       filters = DEFAULT_FILTERS
 
@@ -136,7 +124,7 @@ class LocationService:
     else:
       return None
 
-  def get(self, location_id: int, filters: list = []):
+  def get(self, location_id: int, filters: dict = {}):
     if len(filters) <= 0:
       filters = DEFAULT_FILTERS
 
@@ -265,7 +253,17 @@ class LocationService:
 
         items_list = []
         for item in items:
-          items_list.append(format_item(item))
+          ingredients = item_service.get_ingredients(item['item_id'])
+          ingredients_list = []
+          for ingredient in ingredients:
+            ingredients_list.append(format_ingredient(ingredient))
+          
+          varieties = item_service.get_varieties(item['item_id'])
+          varieties_list = []
+          for variety in varieties:
+            varieties_list.append(format_variety(variety))
+
+          items_list.append(format_item(item, ingredients_list, varieties_list, {'showIngredients': True, 'showVarieties': True}))
         menus_list.append(format_menu(menu, items_list, {"showItems": True}))
 
     json_data, total_rows, total_pages = generate_paginated_data(menus_list, page, limit)

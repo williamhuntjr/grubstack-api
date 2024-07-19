@@ -4,7 +4,7 @@ from grubstack.application.utilities.reducers import field_reducer
 
 from .menus_constants import PER_PAGE
 
-def format_menu(menu: dict, items_list: list = [], filters: list = []):
+def format_menu(menu: dict, items_list: list = [], filters: dict = {}):
   json_data = {
     "id": menu['menu_id'],
     "name": menu['name'],

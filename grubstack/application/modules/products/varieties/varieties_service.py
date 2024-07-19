@@ -12,10 +12,10 @@ class VarietyService:
   def __init__(self):
     pass
 
-  def apply_filters(self, variety: dict, filters: list = []):
+  def apply_filters(self, variety: dict, filters: dict = {}):
     ingredients_list = []
 
-    if 'showIngredients' in filters and filters['showIngredients']:
+    if 'showIngredients' in filters and (filters['showIngredients'] == True or filters['showIngredients'] == 'true'):
       ingredients = self.get_ingredients(variety['variety_id'])
       if ingredients != None:
         for ingredient in ingredients:
@@ -23,7 +23,7 @@ class VarietyService:
 
     return format_variety(variety, ingredients_list, filters)
 
-  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
+  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: dict = {}):
     if len(filters) <= 0:
       filters = DEFAULT_FILTERS
 
@@ -48,7 +48,7 @@ class VarietyService:
 
     return (json_data, total_rows, total_pages)
 
-  def get(self, variety_id: int, filters: list = []):
+  def get(self, variety_id: int, filters: dict = {}):
     if len(filters) <= 0:
       filters = DEFAULT_FILTERS
 
@@ -70,7 +70,7 @@ class VarietyService:
     else:
       return None
 
-  def search(self, name: str, filters: list = []):
+  def search(self, name: str, filters: dict = {}):
     gs_variety = Table('gs_variety')
     qry = Query.from_(
       gs_variety

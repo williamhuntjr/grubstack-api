@@ -5,7 +5,7 @@ from grubstack.application.utilities.reducers import field_reducer
 
 from .varieties_constants import PER_PAGE
 
-def format_variety(variety: dict, ingredients_list: list = [], filters: list = []):
+def format_variety(variety: dict, ingredients_list: list = [], filters: dict = {}):
   json_data = {
     "id": variety['variety_id'],
     "name": variety['name'],

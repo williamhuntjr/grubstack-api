@@ -10,7 +10,7 @@ class EmployeeService:
   def __init__(self):
     pass
 
-  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
+  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: dict = {}):
     gs_employee = Table('gs_employee')
     qry = Query.from_(
       gs_employee

@@ -4,7 +4,7 @@ from grubstack.application.utilities.reducers import field_reducer
 
 from .items_constants import PER_PAGE
 
-def format_item(item: dict, ingredients_list = [], varieties_list: list = [], filters: list = []):
+def format_item(item: dict, ingredients_list = [], varieties_list: list = [], filters: dict = {}):
   json_data = {
     "id": item['item_id'],
     "name": item['name'],

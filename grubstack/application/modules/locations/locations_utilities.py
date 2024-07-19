@@ -1,7 +1,7 @@
 from grubstack import app
 from grubstack.application.utilities.reducers import field_reducer
 
-def format_location(location: dict, menus_list: list = [], filters: list = []):
+def format_location(location: dict, menus_list: list = [], filters: dict = {}):
   json_data = {
     "id": location['location_id'],
     "name": location['name'],

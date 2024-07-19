@@ -10,10 +10,10 @@ class IngredientService:
   def __init__(self):
     pass
 
-  def apply_filters(self, ingredient: dict, filters: list = []):
+  def apply_filters(self, ingredient: dict, filters: dict = {}):
     return format_ingredient(ingredient, filters)
 
-  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
+  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: dict = {}):
     gs_ingredient = Table('gs_ingredient')
 
     qry = Query.from_(
@@ -35,7 +35,7 @@ class IngredientService:
 
     return (json_data, total_rows, total_pages)
 
-  def get(self, ingredient_id: int, filters: list = []):
+  def get(self, ingredient_id: int, filters: dict = {}):
     gs_ingredient = Table('gs_ingredient')
     qry = Query.from_(
       gs_ingredient
@@ -54,7 +54,7 @@ class IngredientService:
     else:
       return None
 
-  def search(self, name: str, filters: list = []):
+  def search(self, name: str, filters: dict = {}):
     gs_ingredient = Table('gs_ingredient')
     qry = Query.from_(
       gs_ingredient

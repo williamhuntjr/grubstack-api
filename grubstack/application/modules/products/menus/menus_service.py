@@ -12,10 +12,9 @@ class MenuService:
   def __init__(self):
     pass
 
-  def apply_filters(self, menu, filters: list = []):
+  def apply_filters(self, menu, filters: dict = {}):
     items_list = []
-
-    if 'showItems' in filters and filters['showItems']:
+    if 'showItems' in filters and (filters['showItems'] == True or filters['showItems'] == 'true'):
       items = self.get_items(menu['menu_id'])
       if items != None:
         for item in items:
@@ -23,7 +22,7 @@ class MenuService:
 
     return format_menu(menu, items_list, filters)
 
-  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: list = []):
+  def get_all(self, page: int = 1, limit: int = PER_PAGE, filters: dict = {}):
     if len(filters) <= 0:
       filters = DEFAULT_FILTERS
 
@@ -48,7 +47,7 @@ class MenuService:
 
     return (json_data, total_rows, total_pages)
 
-  def get(self, menu_id: int, filters: list = []):
+  def get(self, menu_id: int, filters: dict = {}):
     gs_menu = Table('gs_menu')
     qry = Query.from_(
       gs_menu
@@ -67,7 +66,7 @@ class MenuService:
     else:
       return None
 
-  def search(self, name: str, filters: list = []):
+  def search(self, name: str, filters: dict = {}):
     gs_menu = Table('gs_menu')
     qry = Query.from_(
       gs_menu
@@ -86,7 +85,7 @@ class MenuService:
     else:
       return None
 
-  def get_by_slug(self, slug: str, filters: list = []):
+  def get_by_slug(self, slug: str, filters: dict = {}):
     gs_menu = Table('gs_menu')
     qry = Query.from_(
       gs_menu
