@@ -38,21 +38,19 @@ print('INFO: Loading config from {}'.format(configfile))
 config.read(configfile)
 app = Flask(__name__)
 
-if config.get('general', 'tenant_id', fallback='') != '':
-  app.config['TENANT_ID']         = config.get('general', 'tenant_id', fallback='')
-else:
-  app.config['TENANT_ID']         = os.environ.get('TENANT_ID')
-
-if config.get('general', 'access_token', fallback='') != '':
-  app.config['ACCESS_TOKEN']         = config.get('general', 'access_token', fallback='')
-else:
-  app.config['ACCESS_TOKEN']         = os.environ.get('ACCESS_TOKEN')
-
 # General settings
-app.config['CONFIG_FILE']        = configfile
-app.config['VERSION']            = __version__
-app.config['DEBUG']              = config.getboolean('general', 'debug', fallback=False)
-app.config['SECRET_KEY']         = config.get('general', 'secret')
+app.config['TENANT_ID']    = os.environ.get('TENANT_ID') or config.get('general', 'tenant_id', fallback='')
+app.config['ACCESS_TOKEN'] = os.environ.get('ACCESS_TOKEN') or config.get('general', 'access_token', fallback='')
+
+# Square settings
+app.config['SQUARE_ENVIRONMENT']  = os.environ.get('SQUARE_ENVIRONMENT') or config.get('square', 'environment', fallback='')
+app.config['SQUARE_SALT_KEY']     = os.environ.get('SQUARE_SALT_KEY') or config.get('square', 'salt_key', fallback='')
+app.config['SQUARE_API_URL']      = os.environ.get('SQUARE_API_URL') or config.get('square', 'api_url', fallback='')
+
+app.config['CONFIG_FILE']  = configfile
+app.config['VERSION']      = __version__
+app.config['DEBUG']        = config.getboolean('general', 'debug', fallback=False)
+app.config['SECRET_KEY']   = config.get('general', 'secret')
 
 # flask-limiter
 app.config['RATELIMIT_ENABLED']         = config.getboolean('ratelimit', 'enabled', fallback=False)
@@ -71,17 +69,17 @@ app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER') or 'Gr
 app.config['MAIL_DEBUG']          = os.environ.get('MAIL_DEBUG') or False
 
 # flask-jwt
-app.config['JWT_SECRET_KEY'] = config.get('authentication', 'secret', fallback='secret')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = config.getint('authentication', 'access_token_expires', fallback=3600)
+app.config['JWT_SECRET_KEY']            = config.get('authentication', 'secret', fallback='secret')
+app.config['JWT_ACCESS_TOKEN_EXPIRES']  = config.getint('authentication', 'access_token_expires', fallback=3600)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = config.getint('authentication', 'refresh_token_expires', fallback=2592000)
-app.config['JWT_TOKEN_LOCATION'] = ['cookies', 'headers', 'json']
-app.config['JWT_COOKIE_DOMAIN'] = '.grubstack.app'
-app.config['JWT_COOKIE_CSRF_PROTECT'] = False
-app.config['JWT_COOKIE_SECURE'] = True
-app.config['JWT_COOKIE_SAMESITE'] = 'None'
-app.config['JWT_ACCESS_COOKIE_NAME'] = '_grubstack_access_token'
-app.config['JWT_REFRESH_COOKIE_NAME'] = '_grubstack_refresh_token'
-app.config['SESSION_COOKIE_HTTPONLY'] = False
+app.config['JWT_TOKEN_LOCATION']        = ['cookies', 'headers', 'json']
+app.config['JWT_COOKIE_DOMAIN']         = '.grubstack.app'
+app.config['JWT_COOKIE_CSRF_PROTECT']   = False
+app.config['JWT_COOKIE_SECURE']         = True
+app.config['JWT_COOKIE_SAMESITE']       = 'None'
+app.config['JWT_ACCESS_COOKIE_NAME']    = '_grubstack_access_token'
+app.config['JWT_REFRESH_COOKIE_NAME']   = '_grubstack_refresh_token'
+app.config['SESSION_COOKIE_HTTPONLY']   = False
 jwt = JWTManager(app)
 
 # Initialize globals

@@ -128,16 +128,6 @@ def jwt_required(optional=False, fresh=False, refresh=False, locations=None):
     return jwtrequired
   return decorator
 
-def requires_token(f):
-  @wraps(f)
-  def decorated(*args, **kwargs):
-    auth_header = request.headers.get('Authorization')
-    if auth_header != 'Bearer ' + app.config['ACCESS_TOKEN']:
-      raise AuthError({ "code": "invalid_tenant",
-                  "description":"You do not have access to this tenant." }, 403)
-    return f(*args, **kwargs)
-  return decorated
-
 def requires_all_permissions(*expected_args):
   def decorator(func):
     @wraps(func)

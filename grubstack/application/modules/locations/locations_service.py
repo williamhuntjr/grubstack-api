@@ -1,3 +1,5 @@
+import datetime
+
 from pypika import PostgreSQLQuery, Query, Table, Tables, Order, functions, Parameter
 
 from grubstack import app, gsdb, gsprod
@@ -73,7 +75,7 @@ class LocationService:
     return (json_data, total_rows, total_pages)
 
   def create(self, params: dict = ()):
-    name, address1, city, state, postal, location_type, phone_number, is_active = params
+    name, address1, city, state, postal, location_type, phone_number, is_active, merchant_location_id = params
 
     gs_location = Table('gs_location')
     qry = PostgreSQLQuery.into(
@@ -87,9 +89,11 @@ class LocationService:
       gs_location.postal,
       gs_location.location_type,
       gs_location.phone_number,
-      gs_location.is_active
+      gs_location.is_active,
+      gs_location.merchant_location_id
     ).insert(
       app.config['TENANT_ID'],
+      Parameter('%s'),
       Parameter('%s'),
       Parameter('%s'),
       Parameter('%s'),
@@ -100,7 +104,7 @@ class LocationService:
       Parameter('%s')
     ).returning('location_id')
 
-    return gsdb.fetchone(str(qry), (name, address1, city, state, postal, location_type, phone_number, is_active,))
+    return gsdb.fetchone(str(qry), (name, address1, city, state, postal, location_type, phone_number, is_active, merchant_location_id,))
 
   def search(self, name: str, filters: dict = {}):
     if len(filters) <= 0:
@@ -193,7 +197,7 @@ class LocationService:
     gsdb.execute(str(qry), (location_id,))
 
   def update(self, location_id: int, params: dict = ()):
-    name, address1, city, state, postal, location_type, phone_number, is_active = params
+    name, address1, city, state, postal, location_type, phone_number, is_active, merchant_location_id = params
 
     gs_location = Table('gs_location')
     qry = Query.update(
@@ -214,11 +218,13 @@ class LocationService:
       gs_location.phone_number, Parameter('%s')
     ).set(
       gs_location.is_active, Parameter('%s')
+    ).set(
+      gs_location.merchant_location_id, Parameter('%s')
     ).where(
       gs_location.location_id == Parameter('%s')
     )
 
-    return gsdb.execute(str(qry), (name, address1, city, state, postal, location_type, phone_number, is_active, location_id,))
+    return gsdb.execute(str(qry), (name, address1, city, state, postal, location_type, phone_number, is_active, merchant_location_id, location_id,))
 
   def get_menus(self, location_id: int):
     gs_menu, gs_location_menu = Tables('gs_menu', 'gs_location_menu')
@@ -388,6 +394,7 @@ class LocationService:
       gs_location_order_type.order_type_id,
       gs_order_type.name,
       gs_order_type.description,
+      gs_order_type.working_hour_type_id,
     ).where(
       gs_location_order_type.location_id == Parameter('%s')
     ).orderby(
@@ -565,6 +572,29 @@ class LocationService:
     
     return work_hours_list
 
+  def get_work_hour(self, location_id: int, working_hour_type_id: int):
+    gs_location_working_hour = Table('gs_location_working_hour')
+
+    qry = Query.from_(
+      gs_location_working_hour
+    ).select(
+      '*'
+    ).where(
+      gs_location_working_hour.location_id == Parameter('%s')
+    ).where(
+      gs_location_working_hour.working_hour_type_id == Parameter('%s')
+    ).orderby(
+      gs_location_working_hour.day, order=Order.asc
+    )
+
+    work_hours = gsdb.fetchall(str(qry), (location_id, working_hour_type_id,))
+
+    work_hours_list = []
+    for work_hour in work_hours:
+      work_hours_list.append(format_work_hour(work_hour))
+    
+    return work_hours_list
+
   def get_all_properties(self, location_id: int):
     gs_location_property = Table('gs_location_property')
 
@@ -653,3 +683,41 @@ class LocationService:
       )
 
       return gsdb.execute(str(qry), (location_id, key, value,))
+
+  def verify_is_open(self, location_id: int, working_hour_type_id: int):
+    working_hours = self.get_work_hour(location_id, working_hour_type_id)
+    today = datetime.date.today()
+    day_of_week = today.weekday()
+    hour = datetime.datetime.now().hour
+    minute = datetime.datetime.now().minute
+
+    if day_of_week == 6:
+      mapped_day_of_week = 0
+    else:
+      mapped_day_of_week = day_of_week + 1
+
+    for working_hour in working_hours:
+      for key, value in working_hour.items():
+        if key == 'day' and value == mapped_day_of_week:
+          if working_hour['is_open'] is False:
+            return False
+          else:
+            if hour >= working_hour['open_hour'] and hour <= working_hour['close_hour']:
+              if working_hour['open_hour'] == working_hour['close_hour']:
+                if minute > working_hour['open_minute'] and minute < working_hour['close_minute']:
+                  return True
+                else:
+                  return False
+              if hour > working_hour['open_hour'] and hour < working_hour['close_hour']:
+                return True
+              if hour == working_hour['open_hour']:
+                if minute < working_hour['open_minute']:
+                  return False
+                else:
+                  return True
+              if hour == working_hour['close_hour']:
+                if working_hour['close_minute'] == 0 and minute > 0:
+                  return False
+                if minute < working_hour['close_minute']:
+                  return True
+    return False

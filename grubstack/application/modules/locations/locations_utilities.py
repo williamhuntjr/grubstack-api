@@ -12,7 +12,8 @@ def format_location(location: dict, menus_list: list = [], filters: dict = {}):
     "location_type": location['location_type'],
     "phone_number": location['phone_number'],
     "create_date": location['create_date'],
-    "is_active": location['is_active']
+    "is_active": location['is_active'],
+    "merchant_location_id": location['merchant_location_id']
   }
 
   if 'showMenus' in filters and filters['showMenus']:
@@ -42,8 +43,9 @@ def format_params(params: dict, location: dict = {}):
   location_type = field_reducer('location_type', params, location, 'restaurant')
   phone_number = field_reducer('phone_number', params, location, '')
   is_active = field_reducer('is_active', params, location, '')
+  merchant_location_id = field_reducer('merchant_location_id', params, location, '')
 
-  return (name, address1, city, state, postal, location_type, phone_number, is_active)
+  return (name, address1, city, state, postal, location_type, phone_number, is_active, merchant_location_id)
 
 def format_work_hour_params(params: dict):
   day = params['day']

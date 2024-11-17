@@ -57,6 +57,43 @@ class RestaurantService:
 
     return format_order_type(order_type)
 
+  def order_type_exists(self, name: str):
+    gs_order_type = Table('gs_order_type')
+
+    qry = Query.from_(
+      gs_order_type
+    ).select(
+      '*'
+    ).where(
+      gs_order_type.name == Parameter('%s')
+    )
+
+    order_type = gsdb.fetchone(str(qry), (name,))
+
+    if order_type is not None:
+      return True
+    
+    return False
+
+
+  def search_order_type(self, name: str):
+    gs_order_type = Table('gs_order_type')
+
+    qry = Query.from_(
+      gs_order_type
+    ).select(
+      gs_order_type.order_type_id
+    ).where(
+      gs_order_type.name == Parameter('%s')
+    )
+
+    order_type_id = gsdb.fetchone(str(qry), (name,))
+
+    if order_type_id is not None:
+      return self.get_order_type(order_type_id[0])
+    
+    return None
+
   def get_working_hour_type(self, working_hour_type_id: int):
     gs_working_hour_type = Table('gs_working_hour_type')
 

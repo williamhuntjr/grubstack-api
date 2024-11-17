@@ -2,7 +2,8 @@ def format_order_type(order_type: dict = {}):
   json_data = {
     "id": order_type['order_type_id'],
     "name": order_type['name'],
-    "description": order_type['description']
+    "description": order_type['description'],
+    "working_hour_type_id": order_type['working_hour_type_id'],
   }
 
   return json_data
