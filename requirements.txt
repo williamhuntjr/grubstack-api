@@ -38,4 +38,4 @@ uWSGI==2.0.23
 Werkzeug==2.3.3
 wrapt==1.16.0
 cryptocode==0.1
-squareup==38.0.0
+squareup==38.2.0.20241017
