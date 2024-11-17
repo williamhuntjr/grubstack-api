@@ -43,9 +43,9 @@ app.config['TENANT_ID']    = os.environ.get('TENANT_ID') or config.get('general'
 app.config['ACCESS_TOKEN'] = os.environ.get('ACCESS_TOKEN') or config.get('general', 'access_token', fallback='')
 
 # Square settings
-app.config['SQUARE_ENVIRONMENT']  = os.environ.get('SQUARE_ENVIRONMENT') or config.get('square', 'environment', fallback='')
-app.config['SQUARE_SALT_KEY']     = os.environ.get('SQUARE_SALT_KEY') or config.get('square', 'salt_key', fallback='')
-app.config['SQUARE_API_URL']      = os.environ.get('SQUARE_API_URL') or config.get('square', 'api_url', fallback='')
+app.config['SQUARE_ENVIRONMENT']  = os.environ.get('SQUARE_ENVIRONMENT') or config.get('square', 'environment', fallback='sandbox')
+app.config['SQUARE_SALT_KEY']     = os.environ.get('SQUARE_SALT_KEY') or config.get('square', 'salt_key', fallback='fc9ee4e3-1e9a-489c-8a92-f5d50bbdf2fa')
+app.config['SQUARE_API_URL']      = os.environ.get('SQUARE_API_URL') or config.get('square', 'api_url', fallback='https://connect.squareupsandbox.com/v2')
 
 app.config['CONFIG_FILE']  = configfile
 app.config['VERSION']      = __version__
